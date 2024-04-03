@@ -44,7 +44,7 @@ wizard:
     authServer: http://localhost:8080
     realm: gaia-x
     clientId: gx-sa-wizard
-    clientSecret: mEgWQ3GIDsPyZiGhdptotWVyve9WWmVi
+    clientSecret: xxxxx
     publicClientId: gaia-x-public-client
     apiDocsClient:
     webAuthRedirectUrl:
@@ -83,8 +83,8 @@ wizard:
     port: 443
     scheme: https
     authentication: APPROLE
-    role-id: ZGRhODRjMjYtMmZjNC1mN2RkLTkwYzktOTAzZmM3ZTc5MzMw
-    secret-id: Nzk1NWRlY2MtNTI2Ni1hZDk4LWM1NGQtZmY4OGMzZWJmNTI5
+    role-id: xxxxx
+    secret-id: xxxxx
     secret-path: keypair
   gaia-x:
     registryService: https://registry.gaia-x.eu/v1
