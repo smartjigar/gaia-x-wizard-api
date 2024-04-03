@@ -7,6 +7,7 @@ import eu.gaiax.wizard.api.model.LabelLevelTypeInterface;
 import eu.gaiax.wizard.api.model.PageResponse;
 import eu.gaiax.wizard.core.service.data_master.LabelLevelService;
 import eu.gaiax.wizard.core.service.data_master.MasterDataServiceFactory;
+import eu.gaiax.wizard.utils.WizardRestConstant;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -142,6 +143,7 @@ public class DataMasterController extends BaseController {
     )
     @PostMapping(MASTER_DATA_FILTER)
     public CommonResponse<PageResponse> filterTypeMaster(
+            @RequestHeader(value = WizardRestConstant.TENANT_HEADER_KEY) String tenantId,
             @PathVariable(name = "dataType") @Parameter(description = "[access, entity, format, registration, request, standard, subdivision, spdxLicense]") String dataType,
             @Valid @RequestBody FilterRequest filterRequest) {
         BaseService service = masterDataServiceFactory.getInstance(dataType);
@@ -188,7 +190,7 @@ public class DataMasterController extends BaseController {
             description = "This endpoint used to fetch the label level types and questions."
     )
     @GetMapping(LABEL_LEVEL_QUESTIONS)
-    public CommonResponse<List<LabelLevelTypeInterface>> getLabelLevelQuestions() {
+    public CommonResponse<List<LabelLevelTypeInterface>> getLabelLevelQuestions(@RequestHeader(value = WizardRestConstant.TENANT_HEADER_KEY) String tenantId) {
         return CommonResponse.of(labelLevelService.getLabelLevelTypeAndQuestionList());
     }
 }

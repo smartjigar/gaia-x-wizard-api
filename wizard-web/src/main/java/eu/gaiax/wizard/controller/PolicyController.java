@@ -31,13 +31,14 @@ public class PolicyController extends BaseController {
     @Operation(summary = "Create Policy")
     @PostMapping(path = PUBLIC_POLICY, consumes = APPLICATION_JSON_VALUE, produces = APPLICATION_JSON_VALUE)
     public CommonResponse<Map<String, Object>> createODRLPolicy(@Valid @RequestBody ODRLPolicyRequest odrlPolicyRequest) {
-        return CommonResponse.of(this.policyService.createServiceOfferPolicy(odrlPolicyRequest, null));
+        return CommonResponse.of(policyService.createServiceOfferPolicy(odrlPolicyRequest, null));
     }
 
     @Tag(name = "Policy")
     @Operation(summary = "Policy evaluator for catalogue")
     @PostMapping(path = WizardRestConstant.POLICY_EVALUATE, consumes = APPLICATION_JSON_VALUE, produces = APPLICATION_JSON_VALUE)
-    public ResponseEntity<Map<String, Object>> evaluatePolicy(@Valid @RequestBody PolicyEvaluationRequest policyEvaluationRequest) {
-        return ResponseEntity.ok(Map.of(SPATIAL, this.policyService.evaluatePolicy(policyEvaluationRequest)));
+    public ResponseEntity<Map<String, Object>> evaluatePolicy(
+            @Valid @RequestBody PolicyEvaluationRequest policyEvaluationRequest) {
+        return ResponseEntity.ok(Map.of(SPATIAL, policyService.evaluatePolicy(policyEvaluationRequest)));
     }
 }

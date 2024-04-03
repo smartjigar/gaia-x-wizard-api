@@ -7,6 +7,7 @@ import eu.gaiax.wizard.api.model.ServiceFilterResponse;
 import eu.gaiax.wizard.api.model.service_offer.*;
 import eu.gaiax.wizard.api.utils.StringPool;
 import eu.gaiax.wizard.core.service.service_offer.ServiceOfferService;
+import eu.gaiax.wizard.utils.WizardRestConstant;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
@@ -1912,7 +1913,8 @@ public class ServiceOfferController extends BaseController {
     })
     @Operation(summary = "Create Service offering for enterprise, role = enterprise")
     @PostMapping(path = PUBLIC_SERVICE_OFFER, consumes = APPLICATION_JSON_VALUE, produces = APPLICATION_JSON_VALUE)
-    public CommonResponse<ServiceOfferResponse> createServiceOfferingPublic(@Valid @RequestBody CreateServiceOfferingRequest request) throws IOException {
+    public CommonResponse<ServiceOfferResponse> createServiceOfferingPublic(@RequestHeader(value = WizardRestConstant.TENANT_HEADER_KEY) String tenantId,
+            @Valid @RequestBody CreateServiceOfferingRequest request) throws IOException {
         return CommonResponse.of(serviceOfferService.createServiceOffering(request, null, true, null), messageSource.getMessage("entity.creation.successful", new String[]{"Service offer"}, LocaleContextHolder.getLocale()));
     }
 
@@ -1963,7 +1965,8 @@ public class ServiceOfferController extends BaseController {
             }),
     })
     @PostMapping(path = SERVICE_OFFER_LOCATION, consumes = APPLICATION_JSON_VALUE, produces = APPLICATION_JSON_VALUE)
-    public CommonResponse<ServiceOfferingLocationResponse> getServiceOfferingLocation(@Valid @RequestBody ServiceIdRequest serviceIdRequest) {
+    public CommonResponse<ServiceOfferingLocationResponse> getServiceOfferingLocation(@RequestHeader(value = WizardRestConstant.TENANT_HEADER_KEY) String tenantId,
+            @Valid @RequestBody ServiceIdRequest serviceIdRequest) {
         ServiceOfferingLocationResponse serviceOfferingLocationResponse = new ServiceOfferingLocationResponse(serviceOfferService.getLocationFromService(serviceIdRequest));
         return CommonResponse.of(serviceOfferingLocationResponse);
     }
@@ -2056,7 +2059,8 @@ public class ServiceOfferController extends BaseController {
             }),
     })
     @PostMapping(path = SERVICE_OFFER_FILTER, consumes = APPLICATION_JSON_VALUE, produces = APPLICATION_JSON_VALUE)
-    public CommonResponse<PageResponse<ServiceFilterResponse>> getServiceOfferingFilter(@Valid @RequestBody FilterRequest filterRequest) {
+    public CommonResponse<PageResponse<ServiceFilterResponse>> getServiceOfferingFilter(@RequestHeader(value = WizardRestConstant.TENANT_HEADER_KEY) String tenantId,
+            @Valid @RequestBody FilterRequest filterRequest) {
         return CommonResponse.of(serviceOfferService.filterServiceOffering(filterRequest, null));
     }
 

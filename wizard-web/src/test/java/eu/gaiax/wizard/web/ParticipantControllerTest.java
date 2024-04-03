@@ -204,7 +204,7 @@ class ParticipantControllerTest {
 
         try (MockedStatic<InvokeService> invokeServiceMockedStatic = Mockito.mockStatic(InvokeService.class)) {
             invokeServiceMockedStatic.when(() -> InvokeService.executeRequest(anyString(), any())).thenReturn(HelperService.generateLegalParticipantMock(randomUUID));
-            String response = participantController.validateParticipant(participantValidatorRequest);
+            String response = participantController.validateParticipant(anyString(), participantValidatorRequest);
             assertEquals("Success", response);
         }
     }

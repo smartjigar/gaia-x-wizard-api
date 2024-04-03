@@ -12,6 +12,7 @@ import eu.gaiax.wizard.core.service.participant.ParticipantService;
 import eu.gaiax.wizard.core.service.signer.SignerService;
 import eu.gaiax.wizard.core.service.ssl.CertificateService;
 import eu.gaiax.wizard.dao.tenant.entity.participant.Participant;
+import eu.gaiax.wizard.utils.WizardRestConstant;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
@@ -69,7 +70,8 @@ public class ParticipantController extends BaseController {
                     })
     })
     @GetMapping(value = CHECK_REGISTRATION, produces = APPLICATION_JSON_VALUE)
-    public CommonResponse<CheckParticipantRegisteredResponse> checkIfParticipantRegistered(@RequestParam(name = "email") String email) {
+    public CommonResponse<CheckParticipantRegisteredResponse> checkIfParticipantRegistered(@RequestHeader(value = WizardRestConstant.TENANT_HEADER_KEY) String tenantId,
+            @RequestParam(name = "email") String email) {
         CheckParticipantRegisteredResponse checkParticipantRegisteredResponse = participantService.checkIfParticipantRegistered(email.toLowerCase());
 
         String message = checkParticipantRegisteredResponse.userRegistered() ? "user.registered" : "user.not.registered";
@@ -191,8 +193,9 @@ public class ParticipantController extends BaseController {
                     }),
     })
     @PostMapping(value = REGISTER, consumes = APPLICATION_JSON_VALUE, produces = APPLICATION_JSON_VALUE)
-    public CommonResponse<Participant> registerParticipant(@Valid @RequestBody ParticipantRegisterRequest request) {
-        return CommonResponse.of(participantService.registerParticipant(request));
+    public CommonResponse<Participant> registerParticipant(@RequestHeader(value = WizardRestConstant.TENANT_HEADER_KEY) String tenantId,
+            @Valid @RequestBody ParticipantRegisterRequest request) {
+        return CommonResponse.of(participantService.registerParticipant(request, tenantId));
     }
 
     @Operation(
@@ -290,7 +293,8 @@ public class ParticipantController extends BaseController {
     )
     @ApiResponses(value = {@ApiResponse(responseCode = "200", description = "Participant onboarded successfully.")})
     @PostMapping(value = VALIDATE_PARTICIPANT, consumes = APPLICATION_JSON_VALUE, produces = MediaType.TEXT_PLAIN_VALUE)
-    public String validateParticipant(@RequestBody ParticipantValidatorRequest request) {
+    public String validateParticipant(@RequestHeader(value = WizardRestConstant.TENANT_HEADER_KEY) String tenantId,
+            @RequestBody ParticipantValidatorRequest request) {
         participantService.validateParticipant(request);
         return "Success";
     }

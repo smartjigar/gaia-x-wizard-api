@@ -9,6 +9,7 @@ import eu.gaiax.wizard.api.model.service_offer.CreateResourceRequest;
 import eu.gaiax.wizard.api.utils.StringPool;
 import eu.gaiax.wizard.core.service.resource.ResourceService;
 import eu.gaiax.wizard.dao.tenant.entity.resource.Resource;
+import eu.gaiax.wizard.utils.WizardRestConstant;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
@@ -19,10 +20,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.security.Principal;
 
@@ -323,7 +321,8 @@ public class ResourceController extends BaseController {
             }),
     })
     @PostMapping(path = RESOURCE_FILTER, consumes = APPLICATION_JSON_VALUE, produces = APPLICATION_JSON_VALUE)
-    public CommonResponse<PageResponse<ResourceFilterResponse>> filterResource(@Valid @RequestBody FilterRequest filterRequest) {
+    public CommonResponse<PageResponse<ResourceFilterResponse>> filterResource(@RequestHeader(value = WizardRestConstant.TENANT_HEADER_KEY) String tenantId,
+            @Valid @RequestBody FilterRequest filterRequest) {
         return CommonResponse.of(resourceService.filterResource(filterRequest, null));
     }
 

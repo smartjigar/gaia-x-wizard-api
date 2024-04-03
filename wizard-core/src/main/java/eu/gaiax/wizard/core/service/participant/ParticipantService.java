@@ -17,7 +17,6 @@ import eu.gaiax.wizard.api.model.request.ParticipantValidatorRequest;
 import eu.gaiax.wizard.api.model.service_offer.CredentialDto;
 import eu.gaiax.wizard.api.utils.CommonUtils;
 import eu.gaiax.wizard.api.utils.S3Utils;
-import eu.gaiax.wizard.api.utils.TenantContext;
 import eu.gaiax.wizard.api.utils.Validate;
 import eu.gaiax.wizard.core.service.InvokeService;
 import eu.gaiax.wizard.core.service.credential.CredentialService;
@@ -76,11 +75,9 @@ public class ParticipantService extends BaseService<Participant, UUID> {
 
     @Transactional
     @SneakyThrows
-    public Participant registerParticipant(ParticipantRegisterRequest request) {
+    public Participant registerParticipant(ParticipantRegisterRequest request, String tenantAlias) {
         log.debug("ParticipantService(registerParticipant) -> Participant registration with email {}", request.email());
         Validate.isFalse(StringUtils.hasText(request.email())).launch("email.required");
-        Validate.isFalse(StringUtils.hasText(request.tenantAlias())).launch("tenant.not.found");
-        TenantContext.setCurrentTenant(request.tenantAlias());
         ParticipantOnboardRequest onboardRequest = request.onboardRequest();
         validateParticipantOnboardRequest(onboardRequest);
 
@@ -105,7 +102,7 @@ public class ParticipantService extends BaseService<Participant, UUID> {
                 .ownDidSolution(onboardRequest.ownDid())
                 .build());
 
-        keycloakService.createParticipantUser(participant.getId().toString(), participant.getLegalName(), participant.getEmail(), request.tenantAlias());
+        keycloakService.createParticipantUser(participant.getId().toString(), participant.getLegalName(), participant.getEmail(), tenantAlias);
 
         return participant;
     }

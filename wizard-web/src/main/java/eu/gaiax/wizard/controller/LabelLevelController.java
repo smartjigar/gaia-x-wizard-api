@@ -62,8 +62,9 @@ public class LabelLevelController extends BaseController {
             })
     })
     @PostMapping(path = LABEL_LEVEL, consumes = APPLICATION_JSON_VALUE, produces = APPLICATION_JSON_VALUE)
-    public CommonResponse<Object> createLabelLevelVc(@Valid @RequestBody LabelLevelRequest labelLevelRequest) {
-        return CommonResponse.of(this.labelLevelService.createLabelLevelVc(labelLevelRequest, null, null));
+    public CommonResponse<Object> createLabelLevelVc(
+            @Valid @RequestBody LabelLevelRequest labelLevelRequest) {
+        return CommonResponse.of(labelLevelService.createLabelLevelVc(labelLevelRequest, null, null));
     }
 
     @PostMapping(path = LABEL_LEVEL_FILE_UPLOAD, consumes = MULTIPART_FORM_DATA_VALUE, produces = APPLICATION_JSON_VALUE)
@@ -74,6 +75,6 @@ public class LabelLevelController extends BaseController {
             throw new BadDataException("invalid.label.level.file");
         }
 
-        return CommonResponse.of(this.labelLevelService.uploadLabelLevelFile(labelLevelFileUpload));
+        return CommonResponse.of(labelLevelService.uploadLabelLevelFile(labelLevelFileUpload));
     }
 }
