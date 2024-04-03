@@ -26,28 +26,30 @@ wizard:
     s3Endpoint:
   database:
     postgres:
-      host:
-      port:
-      name:
-      username:
-      password:
+      host: localhost
+      port: 5432
+      name: wizard-master
+      username: root
+      password: root
       connection-timeout: 120000
       pool-size: 10
+      leakDetectionThreshold: 50000
+      maxLifetime: 30000
   k8s:
     basePath:
     token:
     serviceName:
     issuer:
   keycloak:
-    authServer:
-    realm:
-    clientId:
-    clientSecret:
-    publicClientId:
+    authServer: http://localhost:8080
+    realm: gaia-x
+    clientId: gx-sa-wizard
+    clientSecret: mEgWQ3GIDsPyZiGhdptotWVyve9WWmVi
+    publicClientId: gaia-x-public-client
     apiDocsClient:
     webAuthRedirectUrl:
-    actionTokenLifespan:
-    requiredActionsEmailRedirectionUrl:
+    actionTokenLifespan: 300
+    requiredActionsEmailRedirectionUrl: http://localhost:4000
   security:
     enabled: true
     realm: ${wizard.keycloak.realm}
@@ -56,13 +58,13 @@ wizard:
     authUrl: ${wizard.security.auth-server-url}/realms/${wizard.security.realm}/protocol/openid-connect/auth
     tokenUrl: ${wizard.security.auth-server-url}/realms/${wizard.security.realm}/protocol/openid-connect/token
     refreshTokenUrl: ${wizard.security.token-url}
-    corsOrigins: "*"
+    corsOrigins: "http://localhost:4000"
   host:
-    signer:
-    wizard:
-    messagingQueue:
+    signer: http://localhost:8000
+    wizard: https://wizard-api.dev.smart-x.smartsenselabs.com/
+    messagingQueue: abc
   server:
-    port: 8080
+    port: 8081
   quartz:
     scheduler:
       instanceName: smartSense
@@ -77,13 +79,13 @@ wizard:
     max-request-size: 1MB
   signer-policies:
   vault:
-    host:
-    port:
-    scheme:
-    authentication:
-    role-id:
-    secret-id:
-    secret-path:
+    host: vault.dev.smart-x.smartsenselabs.com
+    port: 443
+    scheme: https
+    authentication: APPROLE
+    role-id: ZGRhODRjMjYtMmZjNC1mN2RkLTkwYzktOTAzZmM3ZTc5MzMw
+    secret-id: Nzk1NWRlY2MtNTI2Ni1hZDk4LWM1NGQtZmY4OGMzZWJmNTI5
+    secret-path: keypair
   gaia-x:
     registryService: https://registry.gaia-x.eu/v1
   context:
@@ -101,25 +103,29 @@ wizard:
     pdpType:
     pdpUrl:
   sslProvider: acme://letsencrypt.org
+  tenant:
+    liquibase: /migration/tenant/changelog-tenant.xml
 
 spring:
   liquibase:
-    change-log: classpath:/db/changelog/changelog-master.xml
+    change-log: classpath:/migration/master/changelog-master.xml
   main:
     allow-bean-definition-overriding: true
   application:
     name: ${wizard.application.name}
-  datasource:
-    url: jdbc:postgresql://${wizard.database.postgres.host}:${wizard.database.postgres.port}/${wizard.database.postgres.name}
-    username: ${wizard.database.postgres.username}
-    password: ${wizard.database.postgres.password}
-    initialization-mode: always
-    hikari:
-      connectionTimeout: ${wizard.database.postgres.connection-timeout}
-      maximumPoolSize: ${wizard.database.postgres.pool-size}
-      leakDetectionThreshold: 50000
-      maxLifetime: 30000
+  #  datasource:
+  #    url: jdbc:postgresql://${wizard.database.postgres.host:localhost}:${wizard.database.postgres.port:5432}/${wizard.database.postgres.name:testDB}
+  #    username: ${wizard.database.postgres.username:root}
+  #    password: ${wizard.database.postgres.password:root}
+  #    initialization-mode: never
+  #    driverClassName: org.postgresql.Driver
+  #    hikari:
+  #      connectionTimeout: ${wizard.database.postgres.connection-timeout}
+  #      maximumPoolSize: ${wizard.database.postgres.pool-size}
+  #      leakDetectionThreshold: 50000
+  #      maxLifetime: 30000
   quartz:
+    auto-startup: false
     job-store-type: jdbc
     properties:
       org:
@@ -153,7 +159,7 @@ spring:
         roleId: ${wizard.vault.role-id}
         secretId: ${wizard.vault.secret-id}
   jpa:
-    show-sql: false
+    show-sql: true
     hibernate:
       ddl-auto: none
       naming-strategy: org.hibernate.cfg.ImprovedNamingStrategy
@@ -169,6 +175,7 @@ spring:
           batch_versioned_data: true
         order_inserts: true
         order_updates: true
+    open-in-view: false
   servlet:
     multipart:
       max-file-size: ${wizard.multipart.max-file-size}

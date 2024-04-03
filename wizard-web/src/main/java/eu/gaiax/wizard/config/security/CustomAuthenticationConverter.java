@@ -21,20 +21,19 @@ public class CustomAuthenticationConverter implements Converter<Jwt, AbstractAut
 
     public CustomAuthenticationConverter(String resourceId) {
         this.resourceId = resourceId;
-        this.grantedAuthoritiesConverter = new JwtGrantedAuthoritiesConverter();
+        grantedAuthoritiesConverter = new JwtGrantedAuthoritiesConverter();
     }
 
     @Override
     public AbstractAuthenticationToken convert(Jwt source) {
-        Collection<GrantedAuthority> authorities = (this.grantedAuthoritiesConverter.convert(source))
+        Collection<GrantedAuthority> authorities = (grantedAuthoritiesConverter.convert(source))
                 .stream()
                 .collect(Collectors.toSet());
-        authorities.addAll(this.extractResourceRoles(source, this.resourceId));
-        this.extractResourceRoles(source, this.resourceId);
+        authorities.addAll(extractResourceRoles(source, resourceId));
+        extractResourceRoles(source, resourceId);
         return new JwtAuthenticationToken(source, authorities);
     }
 
-    @SuppressWarnings("unchecked")
     private Collection<? extends GrantedAuthority> extractResourceRoles(Jwt jwt, String resourceId) {
         Map<String, Object> resourceAccess = jwt.getClaim("resource_access");
         Map<String, Object> resource = (Map<String, Object>) resourceAccess.get(resourceId);

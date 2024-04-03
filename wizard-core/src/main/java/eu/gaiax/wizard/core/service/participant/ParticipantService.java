@@ -17,18 +17,19 @@ import eu.gaiax.wizard.api.model.request.ParticipantValidatorRequest;
 import eu.gaiax.wizard.api.model.service_offer.CredentialDto;
 import eu.gaiax.wizard.api.utils.CommonUtils;
 import eu.gaiax.wizard.api.utils.S3Utils;
-import eu.gaiax.wizard.api.utils.StringPool;
+import eu.gaiax.wizard.api.utils.TenantContext;
 import eu.gaiax.wizard.api.utils.Validate;
 import eu.gaiax.wizard.core.service.InvokeService;
 import eu.gaiax.wizard.core.service.credential.CredentialService;
 import eu.gaiax.wizard.core.service.domain.DomainService;
 import eu.gaiax.wizard.core.service.keycloak.KeycloakService;
 import eu.gaiax.wizard.core.service.signer.SignerService;
-import eu.gaiax.wizard.dao.entity.Credential;
-import eu.gaiax.wizard.dao.entity.data_master.EntityTypeMaster;
-import eu.gaiax.wizard.dao.entity.participant.Participant;
-import eu.gaiax.wizard.dao.repository.data_master.EntityTypeMasterRepository;
-import eu.gaiax.wizard.dao.repository.participant.ParticipantRepository;
+import eu.gaiax.wizard.dao.master.entity.EntityTypeMaster;
+import eu.gaiax.wizard.dao.master.repo.EntityTypeMasterRepository;
+import eu.gaiax.wizard.dao.master.repo.TenantsRepository;
+import eu.gaiax.wizard.dao.tenant.entity.Credential;
+import eu.gaiax.wizard.dao.tenant.entity.participant.Participant;
+import eu.gaiax.wizard.dao.tenant.repo.participant.ParticipantRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -68,44 +69,47 @@ public class ParticipantService extends BaseService<Participant, UUID> {
     private final ObjectMapper mapper;
     private final MessageSource messageSource;
     private final SpecificationUtil<Participant> specificationUtil;
+    private final TenantsRepository tenantsRepository;
     @Value("${wizard.domain}")
     private String domain;
-    
+
+
     @Transactional
     @SneakyThrows
     public Participant registerParticipant(ParticipantRegisterRequest request) {
         log.debug("ParticipantService(registerParticipant) -> Participant registration with email {}", request.email());
         Validate.isFalse(StringUtils.hasText(request.email())).launch("email.required");
+        Validate.isFalse(StringUtils.hasText(request.tenantAlias())).launch("tenant.not.found");
+        TenantContext.setCurrentTenant(request.tenantAlias());
         ParticipantOnboardRequest onboardRequest = request.onboardRequest();
-        this.validateParticipantOnboardRequest(onboardRequest);
-        
+        validateParticipantOnboardRequest(onboardRequest);
+
         EntityTypeMaster entityType = null;
-        
+
         if (StringUtils.hasText(onboardRequest.entityType())) {
-            entityType = this.entityTypeMasterRepository.findById(UUID.fromString(onboardRequest.entityType())).orElseThrow(() -> new BadDataException("invalid.entity.type"));
+            entityType = entityTypeMasterRepository.findById(UUID.fromString(onboardRequest.entityType())).orElseThrow(() -> new BadDataException("invalid.entity.type"));
         }
-        
-        Participant participant = this.participantRepository.getByEmail(request.email());
+        Participant participant = participantRepository.getByEmail(request.email());
         Validate.isNotNull(participant).launch("participant.already.registered");
-        Validate.isNotNull(this.participantRepository.getByLegalName(request.onboardRequest().legalName())).launch("legal.name.already.registered");
-        Validate.isNotNull(this.participantRepository.getByShortName(request.onboardRequest().shortName().toLowerCase())).launch("short.name.already.registered");
-        
-        participant = this.create(Participant.builder()
+        Validate.isNotNull(participantRepository.getByLegalName(request.onboardRequest().legalName())).launch("legal.name.already.registered");
+        Validate.isNotNull(participantRepository.getByShortName(request.onboardRequest().shortName().toLowerCase())).launch("short.name.already.registered");
+
+        participant = create(Participant.builder()
                 .email(request.email().toLowerCase())
                 .legalName(onboardRequest.legalName())
                 .shortName(onboardRequest.shortName().toLowerCase())
                 .entityType(entityType)
-                .domain(onboardRequest.ownDid() ? null : onboardRequest.shortName().toLowerCase() + "." + this.domain)
+                .domain(onboardRequest.ownDid() ? null : onboardRequest.shortName().toLowerCase() + "." + domain)
                 .participantType("REGISTERED")
-                .credentialRequest(this.mapper.writeValueAsString(onboardRequest.credential()))
+                .credentialRequest(mapper.writeValueAsString(onboardRequest.credential()))
                 .ownDidSolution(onboardRequest.ownDid())
                 .build());
-        
-        this.keycloakService.createParticipantUser(participant.getId().toString(), participant.getLegalName(), participant.getEmail());
-        
+
+        keycloakService.createParticipantUser(participant.getId().toString(), participant.getLegalName(), participant.getEmail(), request.tenantAlias());
+
         return participant;
     }
-    
+
     private void validateParticipantOnboardRequest(ParticipantOnboardRequest request) {
         Validate.isFalse(StringUtils.hasText(request.legalName())).launch("invalid.legal.name");
         Validate.isFalse(StringUtils.hasText(request.shortName())).launch("invalid.short.name");
@@ -115,116 +119,117 @@ public class ParticipantService extends BaseService<Participant, UUID> {
         Object legalParticipant = credential.get("legalParticipant");
         TypeReference<Map<String, Object>> typeReference = new TypeReference<>() {
         };
-        Object credentialSubject = this.mapper.convertValue(legalParticipant, typeReference).get("credentialSubject");
-        this.validateOnboardedCredentialSubject(credentialSubject);
-        Validate.isFalse(this.signerService.validateRegistrationNumber(credential)).launch("invalid.registration.number.details");
+        Object credentialSubject = mapper.convertValue(legalParticipant, typeReference).get("credentialSubject");
+        validateOnboardedCredentialSubject(credentialSubject);
+        Validate.isFalse(signerService.validateRegistrationNumber(credential)).launch("invalid.registration.number.details");
     }
-    
+
     @Transactional(isolation = Isolation.READ_UNCOMMITTED, propagation = Propagation.REQUIRED)
     public Participant initiateOnboardParticipantProcess(String participantId, ParticipantCreationRequest request) {
         log.debug("ParticipantService(initiateOnboardParticipantProcess) -> Prepare legal participant json with participant {}", participantId);
-        Participant participant = this.findParticipantById(UUID.fromString(participantId));
+        Participant participant = findParticipantById(UUID.fromString(participantId));
         Validate.isFalse(StringUtils.hasText(participant.getShortName())).launch("required.shortname");
         if (Objects.nonNull(request.ownDid()) && participant.isOwnDidSolution() != request.ownDid()) {
-            participant.setDomain(request.ownDid() ? null : participant.getShortName().toLowerCase() + "." + this.domain);
+            participant.setDomain(request.ownDid() ? null : participant.getShortName().toLowerCase() + "." + domain);
             participant.setOwnDidSolution(request.ownDid());
-            this.participantRepository.save(participant);
+            participantRepository.save(participant);
         }
-        
+
         if (participant.isOwnDidSolution()) {
             log.debug("ParticipantService(initiateOnboardParticipantProcess) -> Validate participant {} has own did solution.", participantId);
             Validate.isFalse(StringUtils.hasText(request.issuer())).launch("invalid.did");
             Validate.isFalse(StringUtils.hasText(request.privateKey())).launch("invalid.private.key");
             Validate.isFalse(StringUtils.hasText(request.verificationMethod())).launch("invalid.verification.method");
-            Validate.isFalse(this.validateDidWithPrivateKey(request.issuer(), request.verificationMethod(), request.privateKey())).launch("invalid.did.or.private.key");
-            Participant participantFromDid = this.participantRepository.getByDid(request.issuer());
+            Validate.isFalse(validateDidWithPrivateKey(request.issuer(), request.verificationMethod(), request.privateKey())).launch("invalid.did.or.private.key");
+            Participant participantFromDid = participantRepository.getByDid(request.issuer());
             if (Objects.nonNull(participantFromDid) && participantFromDid.getId().toString().equals(participantId)) {
-                throw new BadDataException(this.messageSource.getMessage("did.already.registered", new String[]{}, LocaleContextHolder.getLocale()));
+                throw new BadDataException(messageSource.getMessage("did.already.registered", new String[]{}, LocaleContextHolder.getLocale()));
             }
         }
-        
+
         if (Objects.nonNull(request.ownDid()) && request.ownDid()) {
             participant.setDid(request.issuer());
             participant.setOwnDidSolution(request.ownDid());
-            participant = this.participantRepository.save(participant);
+            participant = participantRepository.save(participant);
         }
-        
-        Credential credentials = this.credentialService.getLegalParticipantCredential(participant.getId());
+
+        Credential credentials = credentialService.getLegalParticipantCredential(participant.getId());
         Validate.isNotNull(credentials).launch("already.legal.participant");
-        this.createLegalParticipantJson(participant, request);
+        createLegalParticipantJson(participant, request);
         if (request.store()) {
             participant.setKeyStored(request.store());
-            this.vaultService.uploadCertificatesToVault(participantId, null, null, null, request.privateKey());
-            this.participantRepository.save(participant);
+            vaultService.uploadCertificatesToVault(participantId, null, null, null, request.privateKey());
+            participantRepository.save(participant);
         }
         return participant;
     }
-    
+
     private void createLegalParticipantJson(Participant participant, ParticipantCreationRequest request) {
         if (participant.isOwnDidSolution()) {
             log.debug("ParticipantService(createLegalParticipantJson) -> Create Legal participant {} who has own did solutions.", participant.getId());
-            this.createLegalParticipantWithDidSolutions(participant, request);
+            createLegalParticipantWithDidSolutions(participant, request);
         } else {
             log.debug("ParticipantService(createLegalParticipantJson) -> Create Legal participant {} who don't have own did solutions.", participant.getId());
-            this.createLegalParticipantWithoutDidSolutions(participant);
+            createLegalParticipantWithoutDidSolutions(participant);
         }
     }
-    
+
     private void createLegalParticipantWithDidSolutions(Participant participant, ParticipantCreationRequest request) {
         log.debug("ParticipantService(createLegalParticipantJson) -> Create participant json.");
-        this.signerService.createSignedLegalParticipant(participant, request.issuer(), request.verificationMethod(), request.privateKey(), true);
+        signerService.createSignedLegalParticipant(participant, request.issuer(), request.verificationMethod(), request.privateKey(), true);
     }
-    
+
     private void createLegalParticipantWithoutDidSolutions(Participant participant) {
         log.debug("ParticipantService(createLegalParticipantJson) -> Create Subdomain, Certificate, Ingress, Did and participant json.");
-        this.domainService.createSubDomain(participant.getId());
+        domainService.createSubDomain(participant.getId());
     }
-    
+
     private void validateOnboardedCredentialSubject(Object credentialSubject) {
         TypeReference<Map<String, Object>> typeReference = new TypeReference<>() {
         };
-        Map<String, Object> credentials = this.mapper.convertValue(credentialSubject, typeReference);
+        Map<String, Object> credentials = mapper.convertValue(credentialSubject, typeReference);
         String legalName = (String) credentials.get("gx:legalName");
         Validate.isFalse(StringUtils.hasText(legalName)).launch("invalid.legal.name");
-        Object legalAddress = credentials.get(StringPool.GX_LEGAL_ADDRESS);
+        Object legalAddress = credentials.get(GX_LEGAL_ADDRESS);
         Object headquarterAddress = credentials.get("gx:headquarterAddress");
-        String legalCountry = (String) this.mapper.convertValue(legalAddress, typeReference).get(StringPool.GX_COUNTRY_SUBDIVISION);
-        String headQuarterCountry = (String) this.mapper.convertValue(headquarterAddress, typeReference).get(StringPool.GX_COUNTRY_SUBDIVISION);
+        String legalCountry = (String) mapper.convertValue(legalAddress, typeReference).get(GX_COUNTRY_SUBDIVISION);
+        String headQuarterCountry = (String) mapper.convertValue(headquarterAddress, typeReference).get(GX_COUNTRY_SUBDIVISION);
         Validate.isFalse(StringUtils.hasText(legalCountry)).launch("invalid.legal.address");
         Validate.isFalse(StringUtils.hasText(headQuarterCountry)).launch("invalid.headquarter.address");
         Object parentOrganization = credentials.get("gx:parentOrganization");
         if (Objects.nonNull(parentOrganization)) {
             TypeReference<List<Map<String, String>>> orgTypeReference = new TypeReference<>() {
             };
-            List<String> parentOrg = this.mapper.convertValue(parentOrganization, orgTypeReference).stream().map(s -> s.get("id")).toList();
-            parentOrg.parallelStream().forEach(url -> this.signerService.validateRequestUrl(Collections.singletonList(url), List.of(GX_LEGAL_PARTICIPANT), LABEL_PARENT_ORGANIZATION, "invalid.parent.organization", null));
+            List<String> parentOrg = mapper.convertValue(parentOrganization, orgTypeReference).stream().map(s -> s.get("id")).toList();
+            parentOrg.parallelStream().forEach(url -> signerService.validateRequestUrl(Collections.singletonList(url), List.of(GX_LEGAL_PARTICIPANT), LABEL_PARENT_ORGANIZATION, "invalid.parent.organization", null));
         }
         Object subOrganization = credentials.get("gx:subOrganization");
         if (Objects.nonNull(subOrganization)) {
             TypeReference<List<Map<String, String>>> orgTypeReference = new TypeReference<>() {
             };
-            List<String> subOrg = this.mapper.convertValue(subOrganization, orgTypeReference).stream().map(s -> s.get("id")).toList();
-            subOrg.parallelStream().forEach(url -> this.signerService.validateRequestUrl(Collections.singletonList(url), List.of(GX_LEGAL_PARTICIPANT), LABEL_SUB_ORGANIZATION, "invalid.sub.organization", null));
+            List<String> subOrg = mapper.convertValue(subOrganization, orgTypeReference).stream().map(s -> s.get("id")).toList();
+            subOrg.parallelStream().forEach(url -> signerService.validateRequestUrl(Collections.singletonList(url), List.of(GX_LEGAL_PARTICIPANT), LABEL_SUB_ORGANIZATION, "invalid.sub.organization", null));
         }
     }
-    
+
     private boolean validateDidWithPrivateKey(String did, String verificationMethod, String privateKey) {
-        return this.signerService.validateDid(did, verificationMethod, privateKey);
+        return signerService.validateDid(did, verificationMethod, privateKey);
     }
-    
+
     @SneakyThrows
     public Participant validateParticipant(ParticipantValidatorRequest request) {
-        this.signerService.validateRequestUrl(Collections.singletonList(request.participantJsonUrl()), List.of(GX_LEGAL_PARTICIPANT), null, "participant.url.not.found", null);
+        signerService.validateRequestUrl(Collections.singletonList(request.participantJsonUrl()), List.of(GX_LEGAL_PARTICIPANT), null, "participant.url.not.found", null);
         String participantJson = InvokeService.executeRequest(request.participantJsonUrl(), HttpMethod.GET);
-        JsonNode root = this.mapper.readTree(participantJson);
+        JsonNode root = mapper.readTree(participantJson);
         String issuer = null;
         JsonNode selfDescriptionCredential = root.get("selfDescriptionCredential");
         if (selfDescriptionCredential != null) {
             issuer = selfDescriptionCredential.path("verifiableCredential").path(0).path("issuer").asText();
         }
         Validate.isNull(issuer).launch(new EntityNotFoundException("issuer.not.found"));
-        
-        Participant participant = this.participantRepository.getByDid(issuer);
+
+
+        Participant participant = participantRepository.getByDid(issuer);
         if (Objects.isNull(participant)) {
             participant = Participant.builder()
                     .did(issuer)
@@ -234,200 +239,200 @@ public class ParticipantService extends BaseService<Participant, UUID> {
                     .ownDidSolution(request.ownDid())
                     .keyStored(request.store())
                     .build();
-            participant = this.participantRepository.save(participant);
-            Credential credential = this.credentialService.getLegalParticipantCredential(participant.getId());
+            participant = participantRepository.save(participant);
+            Credential credential = credentialService.getLegalParticipantCredential(participant.getId());
             if (Objects.isNull(credential)) {
-                this.credentialService.createCredential(participantJson, request.participantJsonUrl(), CredentialTypeEnum.LEGAL_PARTICIPANT.getCredentialType(), null, participant);
+                credentialService.createCredential(participantJson, request.participantJsonUrl(), CredentialTypeEnum.LEGAL_PARTICIPANT.getCredentialType(), null, participant);
             }
         }
-        
+
         if (request.store()) {
-            this.vaultService.uploadCertificatesToVault(participant.getId().toString(), null, null, null, request.privateKey());
+            vaultService.uploadCertificatesToVault(participant.getId().toString(), null, null, null, request.privateKey());
         }
         return participant;
     }
-    
-    
+
+
     public String getWellKnownFiles(String host, String fileName) throws IOException {
         log.info("ParticipantService(getWellKnownFiles) -> Fetch wellKnown file for host {} and filename {}", host, fileName);
         Validate.isTrue(fileName.endsWith("key") || fileName.endsWith("csr")).launch(new EntityNotFoundException("Cannot find file -> " + fileName));
-        Participant participant = this.participantRepository.getByDomain(host);
+        Participant participant = participantRepository.getByDomain(host);
         Validate.isNull(participant).launch(new EntityNotFoundException("subdomain.not.found"));
         if (fileName.equals(DID_JSON)) {
-            return this.getLegalParticipantOrDidJson(participant.getId().toString(), fileName);
+            return getLegalParticipantOrDidJson(participant.getId().toString(), fileName);
         }
-        
-        Map<String, Object> certificates = this.vaultService.getParticipantSecretData(participant.getId().toString());
+
+        Map<String, Object> certificates = vaultService.getParticipantSecretData(participant.getId().toString());
         Object certificate = certificates.get(fileName);
         Validate.isNull(certificate).launch(new EntityNotFoundException("certificate.not.found"));
         return (String) certificate;
     }
-    
+
     public String getLegalParticipantOrDidJson(String participantId, String filename) throws IOException {
         String fetchedFileName = UUID.randomUUID().toString() + "." + FilenameUtils.getExtension(filename);
         File file = new File(fetchedFileName);
-        this.findParticipantById(UUID.fromString(participantId));
-        
+        findParticipantById(UUID.fromString(participantId));
+
         try {
             log.info("ParticipantService(getParticipantFile) -> Fetch files from s3 bucket with Id {} and filename {}", participantId, filename);
-            file = this.s3Utils.getObject(participantId + "/" + filename, fetchedFileName);
+            file = s3Utils.getObject(participantId + "/" + filename, fetchedFileName);
             return FileUtils.readFileToString(file, Charset.defaultCharset());
         } finally {
             CommonUtils.deleteFile(file);
         }
     }
-    
+
     @Transactional(isolation = Isolation.READ_UNCOMMITTED)
     public CheckParticipantRegisteredResponse checkIfParticipantRegistered(String email) {
-        boolean participantExists = this.participantRepository.existsByEmail(email);
-        
+        boolean participantExists = participantRepository.existsByEmail(email);
+
         return new CheckParticipantRegisteredResponse(
                 participantExists,
-                participantExists ? this.keycloakService.isLoginDeviceConfigured(email) : null
+                participantExists ? keycloakService.isLoginDeviceConfigured(email) : null
         );
     }
-    
+
     public Participant changeStatus(UUID participantId, int status) {
-        Participant participant = this.findParticipantById(participantId);
+        Participant participant = findParticipantById(participantId);
         participant.setStatus(status);
-        return this.create(participant);
+        return create(participant);
     }
-    
+
     @Override
     protected BaseRepository<Participant, UUID> getRepository() {
-        return this.participantRepository;
+        return participantRepository;
     }
-    
+
     @Override
     protected SpecificationUtil<Participant> getSpecificationUtil() {
-        return this.specificationUtil;
+        return specificationUtil;
     }
-    
+
     @Transactional(isolation = Isolation.READ_UNCOMMITTED, propagation = Propagation.REQUIRED, readOnly = true)
     public ParticipantConfigDTO getParticipantConfig(String uuid) {
-        Participant participant = this.findParticipantById(UUID.fromString(uuid));
-        
-        ParticipantConfigDTO participantConfigDTO = this.mapper.convertValue(participant, ParticipantConfigDTO.class);
+        Participant participant = findParticipantById(UUID.fromString(uuid));
+
+        ParticipantConfigDTO participantConfigDTO = mapper.convertValue(participant, ParticipantConfigDTO.class);
         if (participant.isOwnDidSolution()) {
             participantConfigDTO.setPrivateKeyRequired(!StringUtils.hasText(participant.getPrivateKeyId()));
         }
-        
-        Credential credential = this.credentialService.getByParticipantWithCredentialType(participant.getId(), CredentialTypeEnum.LEGAL_PARTICIPANT.getCredentialType());
+
+        Credential credential = credentialService.getByParticipantWithCredentialType(participant.getId(), CredentialTypeEnum.LEGAL_PARTICIPANT.getCredentialType());
         if (credential != null) {
             participantConfigDTO.setLegalParticipantUrl(credential.getVcUrl());
         }
-        
+
         return participantConfigDTO;
     }
-    
+
     public ParticipantAndKeyResponse exportParticipantAndKey(String uuid) {
-        Participant participant = this.findParticipantById(UUID.fromString(uuid));
+        Participant participant = findParticipantById(UUID.fromString(uuid));
         ParticipantAndKeyResponse participantAndKeyResponse = new ParticipantAndKeyResponse();
-        
-        Credential legalParticipantCredential = this.credentialService.getLegalParticipantCredential(participant.getId());
+
+        Credential legalParticipantCredential = credentialService.getLegalParticipantCredential(participant.getId());
         Validate.isNull(legalParticipantCredential).launch(new BadDataException("participant.credential.not.found"));
         participantAndKeyResponse.setParticipantJson(legalParticipantCredential.getVcUrl());
-        
+
         if (participant.isOwnDidSolution()) {
             return participantAndKeyResponse;
         }
-        
-        String privateKeySecret = this.vaultService.getParticipantPrivateKeySecret(participant.getId().toString());
+
+        String privateKeySecret = vaultService.getParticipantPrivateKeySecret(participant.getId().toString());
         if (StringUtils.hasText(privateKeySecret)) {
             participantAndKeyResponse.setPrivateKey(privateKeySecret);
         }
-        
+
         return participantAndKeyResponse;
     }
-    
+
     public void sendRegistrationLink(String email) {
-        this.keycloakService.sendRequiredActionsEmail(email);
+        keycloakService.sendRequiredActionsEmail(email);
         log.info("registration email sent to email: {}", email);
     }
-    
+
     @SneakyThrows
     @Transactional(propagation = Propagation.REQUIRED)
     public ParticipantProfileDto getParticipantProfile(String participantId) {
-        Participant participant = this.findParticipantById(UUID.fromString(participantId));
-        
-        ParticipantProfileDto participantProfileDto = this.mapper.convertValue(participant, ParticipantProfileDto.class);
-        JsonNode participantCredentialRequest = this.mapper.readTree(participant.getCredentialRequest());
+        Participant participant = findParticipantById(UUID.fromString(participantId));
+
+        ParticipantProfileDto participantProfileDto = mapper.convertValue(participant, ParticipantProfileDto.class);
+        JsonNode participantCredentialRequest = mapper.readTree(participant.getCredentialRequest());
         participantProfileDto.setLegalRegistrationNumber(participantCredentialRequest.get(LEGAL_REGISTRATION_NUMBER));
-        
-        Credential credential = this.credentialService.getLegalParticipantCredential(participant.getId());
+
+        Credential credential = credentialService.getLegalParticipantCredential(participant.getId());
         if (credential != null) {
-            participantProfileDto.setCredential(this.mapper.convertValue(credential, CredentialDto.class));
+            participantProfileDto.setCredential(mapper.convertValue(credential, CredentialDto.class));
         }
-        
+
         JsonNode credentialSubject = participantCredentialRequest.get(LEGAL_PARTICIPANT).get(CREDENTIAL_SUBJECT);
         participantProfileDto.setHeadquarterAddress(credentialSubject.get(HEADQUARTER_ADDRESS).get(SUBDIVISION_CODE).asText());
         participantProfileDto.setLegalAddress(credentialSubject.get(LEGAL_ADDRESS).get(SUBDIVISION_CODE).asText());
-        
+
         if (StringUtils.hasText(participant.getProfileImage())) {
-            participantProfileDto.setProfileImage(this.s3Utils.getPreSignedUrl(participant.getProfileImage()));
+            participantProfileDto.setProfileImage(s3Utils.getPreSignedUrl(participant.getProfileImage()));
         }
-        
+
         List<String> organizationList;
         if (credentialSubject.has(PARENT_ORGANIZATION)) {
-            organizationList = this.getParentOrSubOrganizationList((ArrayNode) credentialSubject.get(PARENT_ORGANIZATION));
+            organizationList = getParentOrSubOrganizationList((ArrayNode) credentialSubject.get(PARENT_ORGANIZATION));
             participantProfileDto.setParentOrganization(organizationList);
         }
-        
+
         if (credentialSubject.has(SUB_ORGANIZATION)) {
-            organizationList = this.getParentOrSubOrganizationList((ArrayNode) credentialSubject.get(SUB_ORGANIZATION));
+            organizationList = getParentOrSubOrganizationList((ArrayNode) credentialSubject.get(SUB_ORGANIZATION));
             participantProfileDto.setSubOrganization(organizationList);
         }
-        
+
         return participantProfileDto;
     }
-    
+
     private List<String> getParentOrSubOrganizationList(ArrayNode organizationArrayNode) {
-        List<Map<String, String>> organizationlist = this.mapper.convertValue(organizationArrayNode, new TypeReference<>() {
+        List<Map<String, String>> organizationlist = mapper.convertValue(organizationArrayNode, new TypeReference<>() {
         });
         return organizationlist.stream().map(org -> org.get(ID)).sorted().toList();
     }
-    
+
     public String updateParticipantProfileImage(String participantId, MultipartFile multipartFile) {
-        Participant participant = this.findParticipantById(UUID.fromString(participantId));
-        
+        Participant participant = findParticipantById(UUID.fromString(participantId));
+
         if (StringUtils.hasText(participant.getProfileImage())) {
-            this.s3Utils.deleteFile(participant.getProfileImage());
+            s3Utils.deleteFile(participant.getProfileImage());
         }
-        
+
         String fileName = "participant/" + participantId + "_" + System.currentTimeMillis() + "." + FilenameUtils.getExtension(multipartFile.getOriginalFilename());
         File profileImage = new File(TEMP_FOLDER + fileName);
         try {
             FileUtils.copyToFile(multipartFile.getInputStream(), profileImage);
-            this.s3Utils.uploadFile(fileName, profileImage);
+            s3Utils.uploadFile(fileName, profileImage);
         } catch (Exception e) {
             log.error("Error while saving profile picture for participantId: {}", participant.getId(), e);
             throw new BadDataException("invalid.file");
         } finally {
             FileUtils.deleteQuietly(profileImage);
         }
-        
+
         participant.setProfileImage(fileName);
-        this.participantRepository.save(participant);
-        
-        return this.s3Utils.getPreSignedUrl(fileName);
+        participantRepository.save(participant);
+
+        return s3Utils.getPreSignedUrl(fileName);
     }
-    
+
     public void deleteParticipantProfileImage(String participantId) {
-        Participant participant = this.findParticipantById(UUID.fromString(participantId));
-        
+        Participant participant = findParticipantById(UUID.fromString(participantId));
+
         if (!StringUtils.hasText(participant.getProfileImage())) {
             throw new BadDataException("file.not.found");
         }
-        
+
         participant.setProfileImage(null);
-        this.participantRepository.save(participant);
+        participantRepository.save(participant);
     }
-    
+
     public Participant findParticipantById(UUID id) {
-        return this.participantRepository.findById(id).orElseThrow(() -> new BadDataException("participant.not.found"));
+        return participantRepository.findById(id).orElseThrow(() -> new BadDataException("participant.not.found"));
     }
-    
+
     public Participant save(Participant participant) {
-        return this.participantRepository.save(participant);
+        return participantRepository.save(participant);
     }
 }

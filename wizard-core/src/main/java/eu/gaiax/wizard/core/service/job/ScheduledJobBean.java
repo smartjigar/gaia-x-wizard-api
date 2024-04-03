@@ -5,6 +5,7 @@
 package eu.gaiax.wizard.core.service.job;
 
 import eu.gaiax.wizard.api.utils.StringPool;
+import eu.gaiax.wizard.api.utils.TenantContext;
 import eu.gaiax.wizard.core.service.domain.DomainService;
 import eu.gaiax.wizard.core.service.k8s.K8SService;
 import eu.gaiax.wizard.core.service.signer.SignerService;
@@ -39,17 +40,23 @@ public class ScheduledJobBean extends QuartzJobBean {
         JobDetail jobDetail = context.getJobDetail();
         String jobType = jobDetail.getJobDataMap().getString(StringPool.JOB_TYPE);
         UUID participantId = UUID.fromString(jobDetail.getJobDataMap().getString(StringPool.ID));
+        String tenantAlias = jobDetail.getJobDataMap().getString(StringPool.JOB_TENANT_ALIAS);
+        if (tenantAlias == null) {
+            log.error("ScheduledJobBean(executeInternal) -> tenantAlias not found.");
+            return;
+        }
+        log.info("ScheduledJobBean(executeInternal) -> Job execution initiate for JobType:{} Participant:{}, Tenant:{}.", jobType, participantId, tenantAlias);
+        TenantContext.setCurrentTenant(tenantAlias);
         switch (jobType) {
-            case StringPool.JOB_TYPE_CREATE_SUB_DOMAIN -> this.domainService.createSubDomain(participantId);
+            case StringPool.JOB_TYPE_CREATE_SUB_DOMAIN -> domainService.createSubDomain(participantId);
             case StringPool.JOB_TYPE_CREATE_CERTIFICATE ->
-                    this.certificateService.createSSLCertificate(participantId, jobDetail.getKey());
-            case StringPool.JOB_TYPE_CREATE_INGRESS -> this.k8SService.createIngress(participantId);
-            case StringPool.JOB_TYPE_CREATE_DID -> this.signerService.createDid(participantId);
-            case StringPool.JOB_TYPE_CREATE_PARTICIPANT ->
-                    this.signerService.createSignedLegalParticipant(participantId);
+                    certificateService.createSSLCertificate(participantId, jobDetail.getKey());
+            case StringPool.JOB_TYPE_CREATE_INGRESS -> k8SService.createIngress(participantId);
+            case StringPool.JOB_TYPE_CREATE_DID -> signerService.createDid(participantId);
+            case StringPool.JOB_TYPE_CREATE_PARTICIPANT -> signerService.createSignedLegalParticipant(participantId);
             default -> log.error("ScheduledJobBean(executeInternal) -> JobType {} is invalid.", jobType);
         }
-        log.info("ScheduledJobBean(executeInternal) -> Job {} has been executed.", jobType);
+        log.info("ScheduledJobBean(executeInternal) -> Job has been executed for JobType:{} Participant:{}, Tenant:{}.", jobType, participantId, tenantAlias);
     }
 
 }

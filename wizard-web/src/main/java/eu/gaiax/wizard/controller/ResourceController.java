@@ -8,7 +8,7 @@ import eu.gaiax.wizard.api.model.ResourceFilterResponse;
 import eu.gaiax.wizard.api.model.service_offer.CreateResourceRequest;
 import eu.gaiax.wizard.api.utils.StringPool;
 import eu.gaiax.wizard.core.service.resource.ResourceService;
-import eu.gaiax.wizard.dao.entity.resource.Resource;
+import eu.gaiax.wizard.dao.tenant.entity.resource.Resource;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
@@ -131,8 +131,8 @@ public class ResourceController extends BaseController {
             })
     })
     public CommonResponse<Resource> createResource(@PathVariable(StringPool.PARTICIPANT_ID) String participantId, @Valid @RequestBody CreateResourceRequest request, Principal principal) {
-        this.validateParticipantId(participantId, principal);
-        return CommonResponse.of(this.resourceService.createResource(request, this.requestForClaim(StringPool.ID, principal).toString()), this.messageSource.getMessage("entity.creation.successful", new String[]{"Resource"}, LocaleContextHolder.getLocale()));
+        validateParticipantId(participantId, principal);
+        return CommonResponse.of(resourceService.createResource(request, requestForClaim(StringPool.ID, principal).toString()), messageSource.getMessage("entity.creation.successful", new String[]{"Resource"}, LocaleContextHolder.getLocale()));
     }
 
     @io.swagger.v3.oas.annotations.parameters.RequestBody(content = {
@@ -227,12 +227,12 @@ public class ResourceController extends BaseController {
     @Operation(summary = "Create Resource")
     @PostMapping(path = "public/resource", consumes = APPLICATION_JSON_VALUE, produces = APPLICATION_JSON_VALUE)
     public CommonResponse<Resource> createPublicResource(@Valid @RequestBody CreateResourceRequest request) {
-        return CommonResponse.of(this.resourceService.createResource(request, null), this.messageSource.getMessage("entity.creation.successful", new String[]{"Resource"}, LocaleContextHolder.getLocale()));
+        return CommonResponse.of(resourceService.createResource(request, null), messageSource.getMessage("entity.creation.successful", new String[]{"Resource"}, LocaleContextHolder.getLocale()));
     }
 
     @PostMapping(path = "public/resource/validation", consumes = APPLICATION_JSON_VALUE, produces = APPLICATION_JSON_VALUE)
     public void validateResource(@Valid @RequestBody CreateResourceRequest request) throws JsonProcessingException {
-        this.resourceService.validateResourceRequest(request);
+        resourceService.validateResourceRequest(request);
     }
 
     @Operation(summary = "Public API to filter resources")
@@ -324,7 +324,7 @@ public class ResourceController extends BaseController {
     })
     @PostMapping(path = RESOURCE_FILTER, consumes = APPLICATION_JSON_VALUE, produces = APPLICATION_JSON_VALUE)
     public CommonResponse<PageResponse<ResourceFilterResponse>> filterResource(@Valid @RequestBody FilterRequest filterRequest) {
-        return CommonResponse.of(this.resourceService.filterResource(filterRequest, null));
+        return CommonResponse.of(resourceService.filterResource(filterRequest, null));
     }
 
     @Operation(summary = "API to filter user's resources")
@@ -416,8 +416,8 @@ public class ResourceController extends BaseController {
     })
     @PostMapping(path = PARTICIPANT_RESOURCE_FILTER, consumes = APPLICATION_JSON_VALUE, produces = APPLICATION_JSON_VALUE)
     public CommonResponse<PageResponse<ResourceFilterResponse>> filterResource(@PathVariable(value = "participantId") String participantId, @Valid @RequestBody FilterRequest filterRequest, Principal principal) {
-        this.validateParticipantId(participantId, principal);
-        return CommonResponse.of(this.resourceService.filterResource(filterRequest, participantId));
+        validateParticipantId(participantId, principal);
+        return CommonResponse.of(resourceService.filterResource(filterRequest, participantId));
     }
 
 }

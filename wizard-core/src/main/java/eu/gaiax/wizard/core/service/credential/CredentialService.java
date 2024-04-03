@@ -5,9 +5,9 @@
 package eu.gaiax.wizard.core.service.credential;
 
 import eu.gaiax.wizard.api.model.CredentialTypeEnum;
-import eu.gaiax.wizard.dao.entity.Credential;
-import eu.gaiax.wizard.dao.entity.participant.Participant;
-import eu.gaiax.wizard.dao.repository.CredentialRepository;
+import eu.gaiax.wizard.dao.tenant.entity.Credential;
+import eu.gaiax.wizard.dao.tenant.entity.participant.Participant;
+import eu.gaiax.wizard.dao.tenant.repo.CredentialRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -23,7 +23,7 @@ public class CredentialService {
     private final CredentialRepository credentialRepository;
 
     public Credential createCredential(String vcJson, String vcUrl, String credentialType, String metadata, Participant participant) {
-        return this.credentialRepository.save(Credential.builder()
+        return credentialRepository.save(Credential.builder()
                 .vcJson(vcJson)
                 .vcUrl(vcUrl)
                 .credentialType(credentialType)
@@ -33,10 +33,10 @@ public class CredentialService {
     }
 
     public Credential getLegalParticipantCredential(UUID participantId) {
-        return this.getByParticipantWithCredentialType(participantId, CredentialTypeEnum.LEGAL_PARTICIPANT.getCredentialType());
+        return getByParticipantWithCredentialType(participantId, CredentialTypeEnum.LEGAL_PARTICIPANT.getCredentialType());
     }
 
     public Credential getByParticipantWithCredentialType(UUID participantId, String credentialType) {
-        return this.credentialRepository.findByParticipantIdAndCredentialType(participantId, credentialType);
+        return credentialRepository.findByParticipantIdAndCredentialType(participantId, credentialType);
     }
 }

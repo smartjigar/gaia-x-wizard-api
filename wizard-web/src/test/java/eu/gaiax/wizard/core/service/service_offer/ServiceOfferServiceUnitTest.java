@@ -17,13 +17,14 @@ import eu.gaiax.wizard.core.service.InvokeService;
 import eu.gaiax.wizard.core.service.credential.CredentialService;
 import eu.gaiax.wizard.core.service.data_master.SubdivisionCodeMasterService;
 import eu.gaiax.wizard.core.service.hashing.HashingService;
+import eu.gaiax.wizard.core.service.keycloak.KeycloakService;
 import eu.gaiax.wizard.core.service.participant.ParticipantService;
 import eu.gaiax.wizard.core.service.participant.VaultService;
 import eu.gaiax.wizard.core.service.signer.SignerService;
-import eu.gaiax.wizard.dao.entity.Credential;
-import eu.gaiax.wizard.dao.entity.participant.Participant;
-import eu.gaiax.wizard.dao.entity.service_offer.ServiceOffer;
-import eu.gaiax.wizard.dao.repository.service_offer.ServiceOfferRepository;
+import eu.gaiax.wizard.dao.tenant.entity.Credential;
+import eu.gaiax.wizard.dao.tenant.entity.participant.Participant;
+import eu.gaiax.wizard.dao.tenant.entity.service_offer.ServiceOffer;
+import eu.gaiax.wizard.dao.tenant.repo.service_offer.ServiceOfferRepository;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -47,6 +48,7 @@ import static org.mockito.Mockito.doReturn;
 @ExtendWith(MockitoExtension.class)
 class ServiceOfferServiceUnitTest {
 
+    private final String randomUUID = UUID.randomUUID().toString();
     @Mock
     private ServiceOfferRepository serviceOfferRepository;
     @Mock
@@ -66,22 +68,22 @@ class ServiceOfferServiceUnitTest {
     @Mock
     private VaultService vaultService;
     private ServiceOfferService serviceOfferService;
-    private final String randomUUID = UUID.randomUUID().toString();
-
     private CreateServiceOfferingRequest createServiceOfferingRequest;
     private Credential credential;
     private ServiceOffer serviceOffer;
     private ObjectMapper objectMapper;
+    @Mock
+    private KeycloakService keycloakService;
 
     @BeforeEach
     void setUp() {
-        this.objectMapper = this.configureObjectMapper();
-        this.serviceOfferService = Mockito.spy(new ServiceOfferService(this.credentialService, this.serviceOfferRepository, this.objectMapper,
-                this.participantService, this.signerService, this.policyService, null, null, null, this.serviceLabelLevelService,
-                this.vaultService, this.publishService, this.subdivisionCodeMasterService));
-        this.createServiceOfferingRequest = this.generateMockServiceOfferRequest();
-        this.credential = this.generateMockCredential();
-        this.serviceOffer = this.generateMockServiceOffer();
+        objectMapper = configureObjectMapper();
+        serviceOfferService = Mockito.spy(new ServiceOfferService(credentialService, serviceOfferRepository, objectMapper,
+                participantService, signerService, policyService, null, null, null, serviceLabelLevelService,
+                vaultService, publishService, subdivisionCodeMasterService, keycloakService));
+        createServiceOfferingRequest = generateMockServiceOfferRequest();
+        credential = generateMockCredential();
+        serviceOffer = generateMockServiceOffer();
     }
 
     private ObjectMapper configureObjectMapper() {
@@ -95,55 +97,55 @@ class ServiceOfferServiceUnitTest {
 
     @AfterEach
     void tearDown() {
-        this.createServiceOfferingRequest = null;
-        this.credential = null;
-        this.serviceOffer = null;
-        this.objectMapper = null;
-        this.serviceOfferService = null;
+        createServiceOfferingRequest = null;
+        credential = null;
+        serviceOffer = null;
+        objectMapper = null;
+        serviceOfferService = null;
     }
 
     @Test
     void testCreateServiceOffering() throws IOException {
-        Participant participant = this.generateMockParticipant();
+        Participant participant = generateMockParticipant();
 
-        doReturn(this.credential).when(this.credentialService).getByParticipantWithCredentialType(any(), anyString());
-        doReturn(participant).when(this.participantService).findParticipantById(any());
+        doReturn(credential).when(credentialService).getByParticipantWithCredentialType(any(), anyString());
+        doReturn(participant).when(participantService).findParticipantById(any());
 
-        doNothing().when(this.signerService).validateRequestUrl(anyList(), anyList(), nullable(String.class), anyString(), nullable(List.class));
-        doNothing().when(this.policyService).hostPolicy(anyString(), anyString());
-        doNothing().when(this.publishService).publishServiceComplianceToMessagingQueue(any(), anyString());
+        doNothing().when(signerService).validateRequestUrl(anyList(), anyList(), nullable(String.class), anyString(), nullable(List.class));
+        doNothing().when(policyService).hostPolicy(anyString(), anyString());
+        doNothing().when(publishService).publishServiceComplianceToMessagingQueue(any(), anyString());
 
-        doReturn(this.credential).when(this.credentialService).createCredential(anyString(), anyString(), anyString(), anyString(), any());
-        doReturn(this.getServiceCredentialMock()).when(this.signerService).signService(any(), any(), anyString());
-        doReturn(this.serviceOffer).when(this.serviceOfferRepository).save(any());
+        doReturn(credential).when(credentialService).createCredential(anyString(), anyString(), anyString(), anyString(), any());
+        doReturn(getServiceCredentialMock()).when(signerService).signService(any(), any(), anyString());
+        doReturn(serviceOffer).when(serviceOfferRepository).save(any());
 
         Map<String, Object> gxLabelLevelMap = new HashMap<>();
-        gxLabelLevelMap.put(GX_LABEL_LEVEL, this.randomUUID);
+        gxLabelLevelMap.put(GX_LABEL_LEVEL, randomUUID);
         Map<String, Object> credentialSubjectMap = new HashMap<>();
         credentialSubjectMap.put(CREDENTIAL_SUBJECT, gxLabelLevelMap);
         Map<String, Object> labelLevelMap = new HashMap<>();
-        labelLevelMap.put("vcUrl", this.randomUUID);
-        labelLevelMap.put(LABEL_LEVEL_VC, this.objectMapper.writeValueAsString(credentialSubjectMap));
-        doReturn(labelLevelMap).when(this.serviceLabelLevelService).createLabelLevelVc(any(), any(), anyString());
+        labelLevelMap.put("vcUrl", randomUUID);
+        labelLevelMap.put(LABEL_LEVEL_VC, objectMapper.writeValueAsString(credentialSubjectMap));
+        doReturn(labelLevelMap).when(serviceLabelLevelService).createLabelLevelVc(any(), any(), anyString());
 
-        doReturn(this.randomUUID).when(this.vaultService).getParticipantPrivateKeySecret(anyString());
-        doReturn(null).when(this.serviceLabelLevelService).saveServiceLabelLevelLink(anyString(), anyString(), any(), any());
+        doReturn(randomUUID).when(vaultService).getParticipantPrivateKeySecret(anyString());
+        doReturn(null).when(serviceLabelLevelService).saveServiceLabelLevelLink(anyString(), anyString(), any(), any());
         try (MockedStatic<HashingService> hashingServiceMockedStatic = Mockito.mockStatic(HashingService.class)) {
-            hashingServiceMockedStatic.when(() -> HashingService.fetchJsonContent(anyString())).thenReturn(this.randomUUID);
-            ServiceOfferResponse responseServiceOffer = this.serviceOfferService.createServiceOffering(this.createServiceOfferingRequest, UUID.randomUUID().toString(), false);
-            assertThat(responseServiceOffer.getName()).isEqualTo(this.createServiceOfferingRequest.getName());
+            hashingServiceMockedStatic.when(() -> HashingService.fetchJsonContent(anyString())).thenReturn(randomUUID);
+            ServiceOfferResponse responseServiceOffer = serviceOfferService.createServiceOffering(createServiceOfferingRequest, UUID.randomUUID().toString(), false, "test");
+            assertThat(responseServiceOffer.getName()).isEqualTo(createServiceOfferingRequest.getName());
         }
 
     }
 
     @Test
     void testCreateServiceOffering_400() {
-        doReturn(null).when(this.participantService).validateParticipant(any());
-        doNothing().when(this.signerService).validateRequestUrl(anyList(), anyList(), nullable(String.class), anyString(), nullable(List.class));
+        doReturn(null).when(participantService).validateParticipant(any());
+        doNothing().when(signerService).validateRequestUrl(anyList(), anyList(), nullable(String.class), anyString(), nullable(List.class));
 
         try (MockedStatic<HashingService> hashingServiceMockedStatic = Mockito.mockStatic(HashingService.class)) {
-            hashingServiceMockedStatic.when(() -> HashingService.fetchJsonContent(anyString())).thenReturn(this.randomUUID);
-            assertThatThrownBy(() -> this.serviceOfferService.createServiceOffering(this.createServiceOfferingRequest, null, true))
+            hashingServiceMockedStatic.when(() -> HashingService.fetchJsonContent(anyString())).thenReturn(randomUUID);
+            assertThatThrownBy(() -> serviceOfferService.createServiceOffering(createServiceOfferingRequest, null, true, null))
                     .isInstanceOf(BadDataException.class)
                     .hasMessage("participant.not.found");
         }
@@ -152,34 +154,34 @@ class ServiceOfferServiceUnitTest {
 
     @Test
     void testGetLocationFromService() {
-        doReturn(new String[]{"BE-BRU"}).when(this.policyService).getLocationByServiceOfferingId(anyString());
+        doReturn(new String[]{"BE-BRU"}).when(policyService).getLocationByServiceOfferingId(anyString());
         SubdivisionName subdivisionName = new SubdivisionName("Brussels");
-        doReturn(Collections.singletonList(subdivisionName)).when(this.subdivisionCodeMasterService).getNameListBySubdivisionCode(any());
+        doReturn(Collections.singletonList(subdivisionName)).when(subdivisionCodeMasterService).getNameListBySubdivisionCode(any());
 
-        List<String> locationListFromService = this.serviceOfferService.getLocationFromService(new ServiceIdRequest(this.randomUUID));
+        List<String> locationListFromService = serviceOfferService.getLocationFromService(new ServiceIdRequest(randomUUID));
         assertThat(locationListFromService.get(0)).isEqualTo(subdivisionName.name());
     }
 
     @Test
     void testFilterServiceOffering() {
-        doReturn(new PageImpl<>(Collections.singletonList(this.serviceOffer))).when(this.serviceOfferService).filter(any());
+        doReturn(new PageImpl<>(Collections.singletonList(serviceOffer))).when(serviceOfferService).filter(any());
         FilterRequest filterRequest = new FilterRequest();
         filterRequest.setPage(0);
         filterRequest.setSize(1);
-        PageResponse<ServiceFilterResponse> serviceOfferFilterResponse = this.serviceOfferService.filterServiceOffering(filterRequest, this.randomUUID);
+        PageResponse<ServiceFilterResponse> serviceOfferFilterResponse = serviceOfferService.filterServiceOffering(filterRequest, randomUUID);
 
-        assertThat(serviceOfferFilterResponse.getContent().iterator().next().getName()).isEqualTo(this.serviceOffer.getName());
+        assertThat(serviceOfferFilterResponse.getContent().iterator().next().getName()).isEqualTo(serviceOffer.getName());
     }
 
     @Test
     void testGetServiceOfferingById() {
-        doReturn(Optional.of(this.serviceOffer)).when(this.serviceOfferRepository).findById(any());
-        doReturn(new String[]{"BE-BRU"}).when(this.policyService).getLocationByServiceOfferingId(anyString());
+        doReturn(Optional.of(serviceOffer)).when(serviceOfferRepository).findById(any());
+        doReturn(new String[]{"BE-BRU"}).when(policyService).getLocationByServiceOfferingId(anyString());
 
         try (MockedStatic<InvokeService> invokeServiceMockedStatic = Mockito.mockStatic(InvokeService.class)) {
-            invokeServiceMockedStatic.when(() -> InvokeService.executeRequest(anyString(), any())).thenReturn(this.getServiceOfferVc());
-            ServiceDetailResponse serviceOfferingById = this.serviceOfferService.getServiceOfferingById(UUID.fromString(this.randomUUID));
-            assertThat(serviceOfferingById.getName()).isEqualTo(this.serviceOffer.getName());
+            invokeServiceMockedStatic.when(() -> InvokeService.executeRequest(anyString(), any())).thenReturn(getServiceOfferVc());
+            ServiceDetailResponse serviceOfferingById = serviceOfferService.getServiceOfferingById(UUID.fromString(randomUUID));
+            assertThat(serviceOfferingById.getName()).isEqualTo(serviceOffer.getName());
             assertThat(serviceOfferingById.getResources()).isNotNull();
             assertThat(serviceOfferingById.getLocations()).contains("BE-BRU");
             assertThat(serviceOfferingById.getProtectionRegime()).contains("GDPR2016");
@@ -189,21 +191,21 @@ class ServiceOfferServiceUnitTest {
 
     private CreateServiceOfferingRequest generateMockServiceOfferRequest() {
         CreateServiceOfferingRequest createServiceOfferingRequest = new CreateServiceOfferingRequest();
-        createServiceOfferingRequest.setName(this.randomUUID);
+        createServiceOfferingRequest.setName(randomUUID);
 
         Map<String, Object> credentialSubject = new HashMap<>();
-        credentialSubject.put(GX_POLICY, Map.of("gx:location", Collections.singletonList(this.randomUUID)));
-        credentialSubject.put(AGGREGATION_OF, Collections.singletonList(Map.of(ID, this.randomUUID)));
-        credentialSubject.put(DEPENDS_ON, Collections.singletonList(Map.of(ID, this.randomUUID)));
-        credentialSubject.put(GX_TERMS_AND_CONDITIONS, Map.of("gx:URL", this.randomUUID));
+        credentialSubject.put(GX_POLICY, Map.of("gx:location", Collections.singletonList(randomUUID)));
+        credentialSubject.put(AGGREGATION_OF, Collections.singletonList(Map.of(ID, randomUUID)));
+        credentialSubject.put(DEPENDS_ON, Collections.singletonList(Map.of(ID, randomUUID)));
+        credentialSubject.put(GX_TERMS_AND_CONDITIONS, Map.of("gx:URL", randomUUID));
 
         Map<String, Object> dataExport = new HashMap<>();
-        dataExport.put(GX_REQUEST_TYPE, this.randomUUID);
-        dataExport.put(GX_ACCESS_TYPE, this.randomUUID);
-        dataExport.put(GX_FORMAT_TYPE, this.randomUUID);
+        dataExport.put(GX_REQUEST_TYPE, randomUUID);
+        dataExport.put(GX_ACCESS_TYPE, randomUUID);
+        dataExport.put(GX_FORMAT_TYPE, randomUUID);
 
         credentialSubject.put(GX_DATA_ACCOUNT_EXPORT, dataExport);
-        credentialSubject.put(GX_CRITERIA, Map.of(this.randomUUID, this.randomUUID));
+        credentialSubject.put(GX_CRITERIA, Map.of(randomUUID, randomUUID));
         createServiceOfferingRequest.setCredentialSubject(credentialSubject);
 
         return createServiceOfferingRequest;
@@ -211,15 +213,15 @@ class ServiceOfferServiceUnitTest {
 
     private Credential generateMockCredential() {
         return Credential.builder()
-                .vcUrl(this.randomUUID)
+                .vcUrl(randomUUID)
                 .vcJson("{}")
-                .participantId(UUID.fromString(this.randomUUID))
+                .participantId(UUID.fromString(randomUUID))
                 .build();
     }
 
     private Participant generateMockParticipant() {
         Participant participant = new Participant();
-        participant.setId(UUID.fromString(this.randomUUID));
+        participant.setId(UUID.fromString(randomUUID));
         participant.setKeyStored(true);
         participant.setOwnDidSolution(true);
         return participant;
@@ -227,9 +229,9 @@ class ServiceOfferServiceUnitTest {
 
     private ServiceOffer generateMockServiceOffer() {
         ServiceOffer serviceOffer = new ServiceOffer();
-        serviceOffer.setId(UUID.fromString(this.randomUUID));
-        serviceOffer.setName(this.randomUUID);
-        serviceOffer.setCredential(this.credential);
+        serviceOffer.setId(UUID.fromString(randomUUID));
+        serviceOffer.setName(randomUUID);
+        serviceOffer.setCredential(credential);
         serviceOffer.setVeracityData("{\"" + TRUST_INDEX + "\":\" 0.258 \"}");
         return serviceOffer;
     }
@@ -242,7 +244,7 @@ class ServiceOfferServiceUnitTest {
 
         Map<String, String> serviceCredential = new HashMap<>();
         try {
-            serviceCredential.put(SERVICE_VC, this.objectMapper.writeValueAsString(Map.of(SELF_DESCRIPTION_CREDENTIAL, selfDescriptionCredential)));
+            serviceCredential.put(SERVICE_VC, objectMapper.writeValueAsString(Map.of(SELF_DESCRIPTION_CREDENTIAL, selfDescriptionCredential)));
         } catch (Exception ignored) {
 
         }

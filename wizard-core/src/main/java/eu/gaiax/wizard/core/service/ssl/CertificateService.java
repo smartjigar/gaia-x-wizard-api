@@ -4,11 +4,12 @@ import eu.gaiax.wizard.api.exception.EntityNotFoundException;
 import eu.gaiax.wizard.api.model.RegistrationStatus;
 import eu.gaiax.wizard.api.utils.CommonUtils;
 import eu.gaiax.wizard.api.utils.StringPool;
+import eu.gaiax.wizard.api.utils.TenantContext;
 import eu.gaiax.wizard.core.service.domain.DomainService;
 import eu.gaiax.wizard.core.service.job.ScheduleService;
 import eu.gaiax.wizard.core.service.participant.VaultService;
-import eu.gaiax.wizard.dao.entity.participant.Participant;
-import eu.gaiax.wizard.dao.repository.participant.ParticipantRepository;
+import eu.gaiax.wizard.dao.tenant.entity.participant.Participant;
+import eu.gaiax.wizard.dao.tenant.repo.participant.ParticipantRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.quartz.JobKey;
 import org.shredzone.acme4j.*;
@@ -42,11 +43,6 @@ public class CertificateService {
     // RSA key size of generated key pairs
     private static final int KEY_SIZE = 2048;
     private final String sslProvider;
-
-    private enum ChallengeType {
-        DNS
-    }
-
     private final DomainService domainService;
     private final ParticipantRepository participantRepository;
     private final ScheduleService scheduleService;
@@ -85,7 +81,7 @@ public class CertificateService {
 
     public void createSSLCertificate(UUID participantId, JobKey jobKey) {
         log.info("CertificateService(createSSLCertificate) -> Initiate process to create a SSL certificate for participant {}", participantId);
-        Participant participant = this.participantRepository.findById(participantId).orElseThrow(() -> new EntityNotFoundException("participant.not.found"));
+        Participant participant = participantRepository.findById(participantId).orElseThrow(() -> new EntityNotFoundException("participant.not.found"));
 
         File domainChainFile = new File(TEMP_FOLDER + participant.getDomain() + "_chain.crt");
         File csrFile = new File(TEMP_FOLDER + participant.getDomain() + ".csr");
@@ -95,25 +91,25 @@ public class CertificateService {
         try {
 
             // Load the user key file. If there is no key file, create a new one.
-            KeyPair userKeyPair = this.loadOrCreateUserKeyPair();
+            KeyPair userKeyPair = loadOrCreateUserKeyPair();
 
             // Create a session for Let's Encrypt.
             // Use "acme://letsencrypt.org" for production server
-            Session session = new Session(this.sslProvider);
+            Session session = new Session(sslProvider);
 
             // Get the Account.
             // If there is no account yet, create a new one.
-            Account acct = this.findOrRegisterAccount(session, userKeyPair);
+            Account acct = findOrRegisterAccount(session, userKeyPair);
 
             // Load or create a key pair for the domains. This should not be the userKeyPair!
-            KeyPair domainKeyPair = this.loadOrCreateDomainKeyPair(keyfile);
+            KeyPair domainKeyPair = loadOrCreateDomainKeyPair(keyfile);
 
             // Order the certificate
             Order order = acct.newOrder().domain(participant.getDomain()).create();
 
             // Perform all required authorizations
             for (Authorization auth : order.getAuthorizations()) {
-                this.authorize(auth);
+                authorize(auth);
             }
 
             // Generate a CSR for all of the domains, and sign it with the domain key pair.
@@ -186,25 +182,26 @@ public class CertificateService {
             log.info("Certificate URL: {}", certificate.getLocation());
 
             //convert private key in pkcs8 format
-            this.convertKeyFileInPKCS8(keyfile.getAbsolutePath(), pkcs8File.getAbsolutePath(), participant.getDid());
+            convertKeyFileInPKCS8(keyfile.getAbsolutePath(), pkcs8File.getAbsolutePath(), participant.getDid());
 
             //save files in vault
-            this.uploadCertificatesToVault(participant.getId().toString(), domainChainFile, csrFile, keyfile, pkcs8File);
+            uploadCertificatesToVault(participant.getId().toString(), domainChainFile, csrFile, keyfile, pkcs8File);
             participant.setKeyStored(true);
 
+            String tenantAlias = TenantContext.getCurrentTenant();
             //create Job tp create ingress and tls secret
-            this.scheduleService.createJob(participant.getId().toString(), StringPool.JOB_TYPE_CREATE_INGRESS, 0);
+            scheduleService.createJob(participant.getId().toString(), StringPool.JOB_TYPE_CREATE_INGRESS, 0, tenantAlias);
             log.info("CertificateService(createSSLCertificate) -> Ingress creation corn job has been scheduled.");
             if (jobKey != null) {
                 //delete job
-                this.scheduleService.deleteJob(jobKey);
+                scheduleService.deleteJob(jobKey);
             }
             log.info("CertificateService(createSSLCertificate) -> Certificate has been created for participant {}", participantId);
         } catch (Exception e) {
             log.error("CertificateService(createSSLCertificate) -> Can not create certificate for participant id ->{}, domain ->{}", participant.getId(), participant.getDomain(), e);
             participant.setStatus(RegistrationStatus.CERTIFICATE_CREATION_FAILED.getStatus());
         } finally {
-            this.participantRepository.save(participant);
+            participantRepository.save(participant);
             //delete files
             CommonUtils.deleteFile(domainChainFile, csrFile, keyfile, pkcs8File);
             log.info("CertificateService(createSSLCertificate) -> Participant details has been updated.");
@@ -271,7 +268,7 @@ public class CertificateService {
             // Find the desired challenge and prepare it.
             Challenge challenge = null;
             if (CHALLENGE_TYPE == ChallengeType.DNS) {
-                challenge = this.dnsChallenge(auth);
+                challenge = dnsChallenge(auth);
             }
 
             if (challenge == null) {
@@ -321,7 +318,7 @@ public class CertificateService {
 
         } finally {
             try {
-                this.domainService.updateTxtRecords(domain, valuesToBeAdded, StringPool.DELETE);
+                domainService.updateTxtRecords(domain, valuesToBeAdded, StringPool.DELETE);
                 log.info("DomainService(createSubDomain) -> Txt record has been deleted for {}", domain);
             } catch (Exception e) {
                 log.error("DomainService(createSubDomain) -> Txt record has not been deleted for {}", domain, e);
@@ -342,7 +339,7 @@ public class CertificateService {
 
         //Create TXT records
         try {
-            this.domainService.updateTxtRecords(domain, valuesToBeAdded, StringPool.CREATE);
+            domainService.updateTxtRecords(domain, valuesToBeAdded, StringPool.CREATE);
             log.info("DomainService(createSubDomain) -> Txt record has been created for {}", domain);
         } catch (Exception e) {
             log.error("DomainService(createSubDomain) -> Txt record has not been created for {}", domain, e);
@@ -373,9 +370,13 @@ public class CertificateService {
     }
 
     private void uploadCertificatesToVault(String participantId, File domainChain, File csrFile, File keyFile, File pkcs8Key) throws IOException {
-        this.vaultService.uploadCertificatesToVault(participantId,
+        vaultService.uploadCertificatesToVault(participantId,
                 new String(Files.readAllBytes(domainChain.toPath())), new String(Files.readAllBytes(csrFile.toPath())),
                 new String(Files.readAllBytes(keyFile.toPath())), new String(Files.readAllBytes(pkcs8Key.toPath())));
+    }
+
+    private enum ChallengeType {
+        DNS
     }
 
     /*public void uploadCertificatesToVault(String participantId, String domainChain, String csr, String key, String pkcs8Key) {

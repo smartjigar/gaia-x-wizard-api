@@ -3,8 +3,8 @@ package eu.gaiax.wizard.core.service.data_master;
 import com.smartsensesolutions.java.commons.base.repository.BaseRepository;
 import com.smartsensesolutions.java.commons.base.service.BaseService;
 import com.smartsensesolutions.java.commons.specification.SpecificationUtil;
-import eu.gaiax.wizard.dao.entity.data_master.SpdxLicenseMaster;
-import eu.gaiax.wizard.dao.repository.data_master.SpdxLicenseMasterRepository;
+import eu.gaiax.wizard.dao.master.entity.SpdxLicenseMaster;
+import eu.gaiax.wizard.dao.master.repo.SpdxLicenseMasterRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -18,12 +18,12 @@ public class SpdxLicenseMasterService extends BaseService<SpdxLicenseMaster, Str
 
     @Override
     protected BaseRepository<SpdxLicenseMaster, String> getRepository() {
-        return this.spdxLicenseMasterRepository;
+        return spdxLicenseMasterRepository;
     }
 
     @Override
     protected SpecificationUtil<SpdxLicenseMaster> getSpecificationUtil() {
-        return this.specificationUtil;
+        return specificationUtil;
     }
 
 }

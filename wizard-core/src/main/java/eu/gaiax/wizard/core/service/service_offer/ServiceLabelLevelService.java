@@ -15,11 +15,11 @@ import eu.gaiax.wizard.api.utils.Validate;
 import eu.gaiax.wizard.core.service.credential.CredentialService;
 import eu.gaiax.wizard.core.service.hashing.HashingService;
 import eu.gaiax.wizard.core.service.signer.SignerService;
-import eu.gaiax.wizard.dao.entity.Credential;
-import eu.gaiax.wizard.dao.entity.participant.Participant;
-import eu.gaiax.wizard.dao.entity.service_offer.ServiceLabelLevel;
-import eu.gaiax.wizard.dao.entity.service_offer.ServiceOffer;
-import eu.gaiax.wizard.dao.repository.service_offer.ServiceLabelLevelRepository;
+import eu.gaiax.wizard.dao.tenant.entity.Credential;
+import eu.gaiax.wizard.dao.tenant.entity.participant.Participant;
+import eu.gaiax.wizard.dao.tenant.entity.service_offer.ServiceLabelLevel;
+import eu.gaiax.wizard.dao.tenant.entity.service_offer.ServiceOffer;
+import eu.gaiax.wizard.dao.tenant.repo.service_offer.ServiceLabelLevelRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -54,21 +54,21 @@ public class ServiceLabelLevelService extends BaseService<ServiceLabelLevel, UUI
     public Map<String, String> createLabelLevelVc(LabelLevelRequest request, Participant participant, String serviceOfferId) {
         Validate.isNull(participant).launch(new BadDataException("participant.not.found"));
         String name = "labelLevel_" + UUID.randomUUID();
-        String json = this.signLabelLevelVc(request, participant, name, serviceOfferId);
+        String json = signLabelLevelVc(request, participant, name, serviceOfferId);
         Map<String, String> response = new HashMap<>();
-        String labelLevelHostUrl = this.wizardHost + participant.getId() + "/" + name + ".json";
+        String labelLevelHostUrl = wizardHost + participant.getId() + "/" + name + ".json";
 
         response.put("labelLevelVc", json);
         response.put("vcUrl", labelLevelHostUrl);
         if (!participant.isOwnDidSolution()) {
-            this.signerService.addServiceEndpoint(participant.getId(), labelLevelHostUrl, this.serviceEndpointConfig.linkDomainType(), labelLevelHostUrl);
+            signerService.addServiceEndpoint(participant.getId(), labelLevelHostUrl, serviceEndpointConfig.linkDomainType(), labelLevelHostUrl);
         }
         return response;
     }
 
     public ServiceLabelLevel saveServiceLabelLevelLink(String json, String path, Participant participant, ServiceOffer serviceOffer) {
-        Credential labelLevel = this.credentialService.createCredential(json, path, CredentialTypeEnum.LABEL_LEVEL.getCredentialType(), "", participant);
-        return this.serviceLabelLevelRepository.save(
+        Credential labelLevel = credentialService.createCredential(json, path, CredentialTypeEnum.LABEL_LEVEL.getCredentialType(), "", participant);
+        return serviceLabelLevelRepository.save(
                 ServiceLabelLevel.builder()
                         .credential(labelLevel)
                         .serviceOffer(serviceOffer)
@@ -81,13 +81,13 @@ public class ServiceLabelLevelService extends BaseService<ServiceLabelLevel, UUI
         String originalFileName = Optional.ofNullable(labelLevelFileUpload.file().getOriginalFilename())
                 .map(originalName -> originalName.replace(" ", "_"))
                 .orElse(UUID.randomUUID().toString());
-        
+
         String fileName = "public/label-level/" + labelLevelFileUpload.fileType() + "/" + originalFileName;
         try (FileOutputStream fos = new FileOutputStream(file)) {
             fos.write(labelLevelFileUpload.file().getBytes());
 
-            this.s3Utils.uploadFile(fileName, file);
-            return this.s3Utils.getObject(fileName);
+            s3Utils.uploadFile(fileName, file);
+            return s3Utils.getObject(fileName);
         } catch (Exception e) {
             throw new RemoteException("File not Upload " + e.getMessage());
         } finally {
@@ -97,11 +97,11 @@ public class ServiceLabelLevelService extends BaseService<ServiceLabelLevel, UUI
     }
 
     private String signLabelLevelVc(LabelLevelRequest request, Participant participant, String name, String assignerTo) {
-        String id = this.wizardHost + participant.getId() + "/" + name + ".json";
+        String id = wizardHost + participant.getId() + "/" + name + ".json";
         String issuanceDate = LocalDateTime.now().atZone(ZoneOffset.UTC).format(DateTimeFormatter.ISO_OFFSET_DATE_TIME);
         Map<String, Object> labelLevel = new HashMap<>();
         Map<String, Object> map = new HashMap<>();
-        labelLevel.put("@context", this.contextConfig.labelLevel());
+        labelLevel.put("@context", contextConfig.labelLevel());
         labelLevel.put("type", Collections.singleton("VerifiableCredential"));
         labelLevel.put("id", id);
         labelLevel.put("issuer", participant.getDid());
@@ -127,16 +127,16 @@ public class ServiceLabelLevelService extends BaseService<ServiceLabelLevel, UUI
         } else {
             labelLevelMap.put("privateKey", participant.getId().toString());
         }
-        return this.signerService.signLabelLevel(labelLevelMap, participant.getId(), name);
+        return signerService.signLabelLevel(labelLevelMap, participant.getId(), name);
     }
 
     @Override
     protected BaseRepository<ServiceLabelLevel, UUID> getRepository() {
-        return this.serviceLabelLevelRepository;
+        return serviceLabelLevelRepository;
     }
 
     @Override
     protected SpecificationUtil<ServiceLabelLevel> getSpecificationUtil() {
-        return this.specificationUtil;
+        return specificationUtil;
     }
 }

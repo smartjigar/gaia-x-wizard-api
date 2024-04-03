@@ -17,6 +17,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.smartsensesolutions.java.commons.specification.SpecificationUtil;
 import eu.gaiax.wizard.api.model.setting.AWSSettings;
+import eu.gaiax.wizard.utils.WizardRestConstant;
 import org.hibernate.validator.messageinterpolation.ResourceBundleMessageInterpolator;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.MessageSource;
@@ -28,11 +29,16 @@ import org.springframework.util.StringUtils;
 import org.springframework.validation.Validator;
 import org.springframework.validation.beanvalidation.LocalValidatorFactoryBean;
 import org.springframework.validation.beanvalidation.MessageSourceResourceBundleLocator;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import org.springframework.web.servlet.LocaleResolver;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 import org.springframework.web.servlet.i18n.AcceptHeaderLocaleResolver;
 
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Locale;
 
 /**
@@ -52,7 +58,7 @@ public class ApplicationConfig implements WebMvcConfigurer {
      * @param resourceBundlePath the resource bundle path
      */
     public ApplicationConfig(@Value("${resource.bundle.path:classpath:i18n/language}") String resourceBundlePath,
-                             AWSSettings awsSettings) {
+            AWSSettings awsSettings) {
         this.resourceBundlePath = resourceBundlePath;
         this.awsSettings = awsSettings;
     }
@@ -80,7 +86,7 @@ public class ApplicationConfig implements WebMvcConfigurer {
     @Bean
     public MessageSource messageSource() {
         ReloadableResourceBundleMessageSource bean = new ReloadableResourceBundleMessageSource();
-        bean.setBasename(this.resourceBundlePath);
+        bean.setBasename(resourceBundlePath);
         bean.setDefaultEncoding(StandardCharsets.UTF_8.name());
         return bean;
     }
@@ -93,8 +99,8 @@ public class ApplicationConfig implements WebMvcConfigurer {
     @Bean
     public LocalValidatorFactoryBean validator() {
         LocalValidatorFactoryBean beanValidatorFactory = new LocalValidatorFactoryBean();
-        beanValidatorFactory.setValidationMessageSource(this.messageSource());
-        beanValidatorFactory.setMessageInterpolator(new ResourceBundleMessageInterpolator(new MessageSourceResourceBundleLocator(this.messageSource())));
+        beanValidatorFactory.setValidationMessageSource(messageSource());
+        beanValidatorFactory.setMessageInterpolator(new ResourceBundleMessageInterpolator(new MessageSourceResourceBundleLocator(messageSource())));
         return beanValidatorFactory;
     }
 
@@ -114,27 +120,27 @@ public class ApplicationConfig implements WebMvcConfigurer {
     @Nullable
     @Override
     public Validator getValidator() {
-        return this.validator();
+        return validator();
     }
 
     @Bean
     public AmazonS3 amazonS3() {
 
-        if (StringUtils.hasText(this.awsSettings.s3Endpoint())) {
+        if (StringUtils.hasText(awsSettings.s3Endpoint())) {
             return AmazonS3ClientBuilder.standard()
-                    .withEndpointConfiguration(new AwsClientBuilder.EndpointConfiguration(this.awsSettings.s3Endpoint(), this.awsSettings.region()))
+                    .withEndpointConfiguration(new AwsClientBuilder.EndpointConfiguration(awsSettings.s3Endpoint(), awsSettings.region()))
                     .withCredentials(new AWSCredentialsProvider() {
                         @Override
                         public AWSCredentials getCredentials() {
                             return new AWSCredentials() {
                                 @Override
                                 public String getAWSAccessKeyId() {
-                                    return ApplicationConfig.this.awsSettings.accessKey();
+                                    return awsSettings.accessKey();
                                 }
 
                                 @Override
                                 public String getAWSSecretKey() {
-                                    return ApplicationConfig.this.awsSettings.secretKey();
+                                    return awsSettings.secretKey();
                                 }
                             };
                         }
@@ -146,19 +152,19 @@ public class ApplicationConfig implements WebMvcConfigurer {
                     }).build();
         } else {
             return AmazonS3ClientBuilder.standard().
-                    withRegion(this.awsSettings.region()).
+                    withRegion(awsSettings.region()).
                     withCredentials(new AWSCredentialsProvider() {
                         @Override
                         public AWSCredentials getCredentials() {
                             return new AWSCredentials() {
                                 @Override
                                 public String getAWSAccessKeyId() {
-                                    return ApplicationConfig.this.awsSettings.accessKey();
+                                    return awsSettings.accessKey();
                                 }
 
                                 @Override
                                 public String getAWSSecretKey() {
-                                    return ApplicationConfig.this.awsSettings.secretKey();
+                                    return awsSettings.secretKey();
                                 }
                             };
                         }
@@ -180,12 +186,12 @@ public class ApplicationConfig implements WebMvcConfigurer {
                         return new AWSCredentials() {
                             @Override
                             public String getAWSAccessKeyId() {
-                                return ApplicationConfig.this.awsSettings.accessKey();
+                                return awsSettings.accessKey();
                             }
 
                             @Override
                             public String getAWSSecretKey() {
-                                return ApplicationConfig.this.awsSettings.secretKey();
+                                return awsSettings.secretKey();
                             }
                         };
                     }
@@ -195,12 +201,27 @@ public class ApplicationConfig implements WebMvcConfigurer {
                         //Do nothing
                     }
                 })
-                .withRegion(this.awsSettings.region())
+                .withRegion(awsSettings.region())
                 .build();
     }
 
     @Bean
     public SpecificationUtil specificationUtil() {
         return new SpecificationUtil();
+    }
+
+
+    @Bean
+    CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration configuration = new CorsConfiguration();
+        configuration.setAllowedOrigins(Arrays.asList("http://localhost:4000/"));   //changes as per your port and host name
+        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "OPTIONS", "PUT", "DELETE"));
+        configuration.setAllowedHeaders(
+                List.of("X-Requested-With", "X-HTTP-Method-Override", "Content-Type", "Authorization", "Accept",
+                        "Access-Control-Allow-Credentials", "Access-Control-Allow-Origin", WizardRestConstant.TENANT_HEADER_KEY));
+        configuration.setAllowCredentials(true);
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", configuration);
+        return source;
     }
 }

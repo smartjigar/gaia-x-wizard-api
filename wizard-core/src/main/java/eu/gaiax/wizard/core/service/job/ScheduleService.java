@@ -32,7 +32,7 @@ public class ScheduleService {
      */
     public void deleteJob(JobKey jobKey) {
         try {
-            this.scheduler.deleteJob(jobKey);
+            scheduler.deleteJob(jobKey);
             LOGGER.debug("Job deleted for group-{}, name-{}", jobKey.getGroup(), jobKey.getName());
         } catch (SchedulerException e) {
             LOGGER.error("Can not delete job with group-{}, name-{}", jobKey.getGroup(), jobKey.getName());
@@ -47,13 +47,14 @@ public class ScheduleService {
      * @param count the count
      * @throws SchedulerException the scheduler exception
      */
-    public void createJob(String id, String type, int count) throws SchedulerException {
+    public void createJob(String id, String type, int count, String tenantAlias) throws SchedulerException {
         JobDetail job = JobBuilder.newJob(ScheduledJobBean.class)
                 .withIdentity(UUID.randomUUID().toString(), type)
                 .storeDurably()
                 .requestRecovery()
                 .usingJobData(StringPool.ID, id)
                 .usingJobData(StringPool.JOB_TYPE, type)
+                .usingJobData(StringPool.JOB_TENANT_ALIAS, tenantAlias)
                 .build();
 
         SimpleTrigger activateEnterpriseUserTrigger = TriggerBuilder.newTrigger()
@@ -62,7 +63,7 @@ public class ScheduleService {
                 .startAt(new Date(System.currentTimeMillis() + 10000)) //start after 10 sec
                 .withSchedule(SimpleScheduleBuilder.simpleSchedule().withRepeatCount(count).withIntervalInSeconds(30))
                 .build();
-        this.scheduler.scheduleJob(job, activateEnterpriseUserTrigger);
+        scheduler.scheduleJob(job, activateEnterpriseUserTrigger);
         LOGGER.debug("{}: job created for participant with id->{}", type, id);
     }
 }

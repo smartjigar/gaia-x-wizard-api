@@ -39,12 +39,13 @@ public class AuthenticationConfig {
                         .requestMatchers("/did/**").permitAll()
                         .requestMatchers("/certificate/**").permitAll()
                         .requestMatchers("/.well-known/**").permitAll()
-                        .requestMatchers("/public/**").permitAll()
+                        .requestMatchers(API_PUBLIC_URL_PREFIX + "/**").permitAll()
                         .requestMatchers(PARTICIPANT_JSON).permitAll()
                         .requestMatchers(ONBOARD_PARTICIPANT, PARTICIPANT_ROOT + "/**").hasRole(PARTICIPANT_ROLE)
                         .requestMatchers(SERVICE_OFFER).hasRole(PARTICIPANT_ROLE)
+                        .requestMatchers(TENANT + "/**").hasRole(PARTICIPANT_ROLE)
                 )
-                .oauth2ResourceServer(resourceServer -> resourceServer.jwt(jwt -> jwt.jwtAuthenticationConverter(new CustomAuthenticationConverter(this.configProperties.clientId()))))
+                .oauth2ResourceServer(resourceServer -> resourceServer.jwt(jwt -> jwt.jwtAuthenticationConverter(new CustomAuthenticationConverter(configProperties.clientId()))))
                 .build();
     }
 

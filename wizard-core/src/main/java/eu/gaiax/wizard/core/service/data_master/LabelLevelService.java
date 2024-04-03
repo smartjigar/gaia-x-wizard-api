@@ -4,8 +4,8 @@ import com.smartsensesolutions.java.commons.base.repository.BaseRepository;
 import com.smartsensesolutions.java.commons.base.service.BaseService;
 import com.smartsensesolutions.java.commons.specification.SpecificationUtil;
 import eu.gaiax.wizard.api.model.LabelLevelTypeInterface;
-import eu.gaiax.wizard.dao.entity.data_master.LabelLevelTypeMaster;
-import eu.gaiax.wizard.dao.repository.data_master.LabelLevelTypeMasterRepository;
+import eu.gaiax.wizard.dao.master.entity.LabelLevelTypeMaster;
+import eu.gaiax.wizard.dao.master.repo.LabelLevelTypeMasterRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -21,15 +21,15 @@ public class LabelLevelService extends BaseService<LabelLevelTypeMaster, String>
 
     @Override
     protected BaseRepository<LabelLevelTypeMaster, String> getRepository() {
-        return this.labelLevelTypeMasterRepository;
+        return labelLevelTypeMasterRepository;
     }
 
     @Override
     protected SpecificationUtil<LabelLevelTypeMaster> getSpecificationUtil() {
-        return this.specificationUtil;
+        return specificationUtil;
     }
 
     public List<LabelLevelTypeInterface> getLabelLevelTypeAndQuestionList() {
-        return this.labelLevelTypeMasterRepository.findAllByActiveIsTrueAndLabelLevelQuestionMasterListIsNotNull();
+        return labelLevelTypeMasterRepository.findAllByActiveIsTrueAndLabelLevelQuestionMasterListIsNotNull();
     }
 }

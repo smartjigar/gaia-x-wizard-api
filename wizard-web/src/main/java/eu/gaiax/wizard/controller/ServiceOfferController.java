@@ -931,7 +931,8 @@ public class ServiceOfferController extends BaseController {
                     }),
     })
     public CommonResponse<ServiceOfferResponse> createServiceOffering(@Valid @RequestBody CreateServiceOfferingRequest request, Principal principal) throws IOException {
-        return CommonResponse.of(this.serviceOfferService.createServiceOffering(request, this.requestForClaim(StringPool.ID, principal).toString(), false), this.messageSource.getMessage("entity.creation.successful", new String[]{"Service offer"}, LocaleContextHolder.getLocale()));
+        return CommonResponse.of(serviceOfferService.createServiceOffering(request, requestForClaim(StringPool.ID, principal).toString(), false,
+                requestForClaim(StringPool.TENANT, principal).toString()), messageSource.getMessage("entity.creation.successful", new String[]{"Service offer"}, LocaleContextHolder.getLocale()));
     }
 
     @Operation(summary = "Validate Service offering for enterprise, role = enterprise")
@@ -1008,7 +1009,7 @@ public class ServiceOfferController extends BaseController {
                     }),
     })
     public void validateServiceOfferRequest(@Valid @RequestBody CreateServiceOfferingRequest request) throws IOException {
-        this.serviceOfferService.validateServiceOfferMainRequest(request);
+        serviceOfferService.validateServiceOfferMainRequest(request);
     }
 
     @io.swagger.v3.oas.annotations.parameters.RequestBody(content = {
@@ -1912,7 +1913,7 @@ public class ServiceOfferController extends BaseController {
     @Operation(summary = "Create Service offering for enterprise, role = enterprise")
     @PostMapping(path = PUBLIC_SERVICE_OFFER, consumes = APPLICATION_JSON_VALUE, produces = APPLICATION_JSON_VALUE)
     public CommonResponse<ServiceOfferResponse> createServiceOfferingPublic(@Valid @RequestBody CreateServiceOfferingRequest request) throws IOException {
-        return CommonResponse.of(this.serviceOfferService.createServiceOffering(request, null, true), this.messageSource.getMessage("entity.creation.successful", new String[]{"Service offer"}, LocaleContextHolder.getLocale()));
+        return CommonResponse.of(serviceOfferService.createServiceOffering(request, null, true, null), messageSource.getMessage("entity.creation.successful", new String[]{"Service offer"}, LocaleContextHolder.getLocale()));
     }
 
     @Operation(summary = "Get service locations from policy")
@@ -1963,7 +1964,7 @@ public class ServiceOfferController extends BaseController {
     })
     @PostMapping(path = SERVICE_OFFER_LOCATION, consumes = APPLICATION_JSON_VALUE, produces = APPLICATION_JSON_VALUE)
     public CommonResponse<ServiceOfferingLocationResponse> getServiceOfferingLocation(@Valid @RequestBody ServiceIdRequest serviceIdRequest) {
-        ServiceOfferingLocationResponse serviceOfferingLocationResponse = new ServiceOfferingLocationResponse(this.serviceOfferService.getLocationFromService(serviceIdRequest));
+        ServiceOfferingLocationResponse serviceOfferingLocationResponse = new ServiceOfferingLocationResponse(serviceOfferService.getLocationFromService(serviceIdRequest));
         return CommonResponse.of(serviceOfferingLocationResponse);
     }
 
@@ -2056,7 +2057,7 @@ public class ServiceOfferController extends BaseController {
     })
     @PostMapping(path = SERVICE_OFFER_FILTER, consumes = APPLICATION_JSON_VALUE, produces = APPLICATION_JSON_VALUE)
     public CommonResponse<PageResponse<ServiceFilterResponse>> getServiceOfferingFilter(@Valid @RequestBody FilterRequest filterRequest) {
-        return CommonResponse.of(this.serviceOfferService.filterServiceOffering(filterRequest, null));
+        return CommonResponse.of(serviceOfferService.filterServiceOffering(filterRequest, null));
     }
 
     @Operation(summary = "Get service list for logged in participant")
@@ -2148,14 +2149,14 @@ public class ServiceOfferController extends BaseController {
     })
     @PostMapping(path = PARTICIPANT_SERVICE_OFFER_FILTER, consumes = APPLICATION_JSON_VALUE, produces = APPLICATION_JSON_VALUE)
     public CommonResponse<PageResponse<ServiceFilterResponse>> getServiceOfferingList(@PathVariable(value = "participantId") String participantId, @Valid @RequestBody FilterRequest filterRequest, Principal principal) {
-        this.validateParticipantId(participantId, principal);
-        return CommonResponse.of(this.serviceOfferService.filterServiceOffering(filterRequest, participantId));
+        validateParticipantId(participantId, principal);
+        return CommonResponse.of(serviceOfferService.filterServiceOffering(filterRequest, participantId));
     }
 
     @GetMapping(path = PARTICIPANT_SERVICE_OFFER_DETAILS, produces = APPLICATION_JSON_VALUE)
     public CommonResponse<ServiceDetailResponse> getServiceOfferingDetails(@PathVariable(value = "participantId") String participantId, @PathVariable(value = "serviceOfferId") UUID serviceOfferId, Principal principal) {
-        this.validateParticipantId(participantId, principal);
-        return CommonResponse.of(this.serviceOfferService.getServiceOfferingById(serviceOfferId));
+        validateParticipantId(participantId, principal);
+        return CommonResponse.of(serviceOfferService.getServiceOfferingById(serviceOfferId));
     }
 
 }

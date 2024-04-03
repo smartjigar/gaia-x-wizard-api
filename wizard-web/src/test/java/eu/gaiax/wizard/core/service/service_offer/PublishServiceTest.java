@@ -6,7 +6,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import eu.gaiax.wizard.GaiaXWizardApplication;
 import eu.gaiax.wizard.api.client.MessagingQueueClient;
-import eu.gaiax.wizard.dao.repository.service_offer.ServiceOfferRepository;
+import eu.gaiax.wizard.dao.tenant.repo.service_offer.ServiceOfferRepository;
 import eu.gaiax.wizard.util.ContainerContextInitializer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -34,21 +34,18 @@ import static org.mockito.Mockito.doReturn;
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class PublishServiceTest {
 
+    private final String randomUUID = UUID.randomUUID().toString();
     private PublishService publishService;
-
     @MockBean
     @Autowired
     private ServiceOfferRepository serviceOfferRepository;
-
     @MockBean
     @Autowired
     private MessagingQueueClient messagingQueueClient;
 
-    private final String randomUUID = UUID.randomUUID().toString();
-
     @BeforeEach
     void setUp() {
-        this.publishService = new PublishService(this.configureObjectMapper(), this.messagingQueueClient, this.serviceOfferRepository);
+        publishService = new PublishService(configureObjectMapper(), messagingQueueClient, serviceOfferRepository);
     }
 
     private ObjectMapper configureObjectMapper() {
@@ -62,15 +59,15 @@ class PublishServiceTest {
 
     @Test
     void testPublishServiceComplianceToMessagingQueue() {
-        doReturn(this.generateSuccessResponseEntity()).when(this.messagingQueueClient).publishServiceCompliance(any());
-        doNothing().when(this.serviceOfferRepository).updateMessageReferenceId(any(), anyString());
+        doReturn(generateSuccessResponseEntity()).when(messagingQueueClient).publishServiceCompliance(any());
+        doNothing().when(serviceOfferRepository).updateMessageReferenceId(any(), anyString());
 
-        assertDoesNotThrow(() -> this.publishService.publishServiceComplianceToMessagingQueue(UUID.randomUUID(), this.getServiceCompliance()));
+        assertDoesNotThrow(() -> publishService.publishServiceComplianceToMessagingQueue(UUID.randomUUID(), getServiceCompliance()));
     }
 
     private ResponseEntity<Object> generateSuccessResponseEntity() {
         HttpHeaders responseHeaders = new HttpHeaders();
-        responseHeaders.add("location", "http://localhost/" + this.randomUUID);
+        responseHeaders.add("location", "http://localhost/" + randomUUID);
         return new ResponseEntity<>(null, responseHeaders, HttpStatus.CREATED);
     }
 

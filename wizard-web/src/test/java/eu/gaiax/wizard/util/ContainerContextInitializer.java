@@ -126,7 +126,7 @@ public class ContainerContextInitializer implements ApplicationContextInitialize
         properties.put("wizard.context.labelLevel", "https://www.w3.org/2018/credentials/v1,https://w3id.org/security/suites/jws-2020/v1,https://registry.lab.gaia-x.eu/development/api/trusted-shape-registry/v1/shapes/jsonld/trustframework#");
         properties.put("wizard.context.resource", "https://www.w3.org/2018/credentials/v1,https://registry.lab.gaia-x.eu/development/api/trusted-shape-registry/v1/shapes/jsonld/trustframework#");
         properties.put("wizard.gaiax.tnc", "In publishing and graphic design, Lorem ipsum is a placeholder text commonly used to demonstrate the visual form of a document or a typeface without relying on meaningful content.");
-        properties.put("spring.liquibase.change-log", "classpath:/db/changelog/changelog-master.xml");
+        properties.put("spring.liquibase.change-log", "classpath:/db/changelog/changelog-tenant.xml");
         properties.put("spring.main.allow-bean-definition-overriding", "true");
         properties.put("spring.application.name", "gaia-x-wizard");
         properties.put("spring.datasource.initialization-mode", "always");

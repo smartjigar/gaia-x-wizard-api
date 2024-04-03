@@ -4,8 +4,8 @@ import com.smartsensesolutions.java.commons.base.repository.BaseRepository;
 import com.smartsensesolutions.java.commons.base.service.BaseService;
 import com.smartsensesolutions.java.commons.specification.SpecificationUtil;
 import eu.gaiax.wizard.api.model.policy.SubdivisionName;
-import eu.gaiax.wizard.dao.entity.data_master.SubdivisionCodeMaster;
-import eu.gaiax.wizard.dao.repository.data_master.SubdivisionCodeMasterRepository;
+import eu.gaiax.wizard.dao.master.entity.SubdivisionCodeMaster;
+import eu.gaiax.wizard.dao.master.repo.SubdivisionCodeMasterRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -21,15 +21,15 @@ public class SubdivisionCodeMasterService extends BaseService<SubdivisionCodeMas
 
     @Override
     protected BaseRepository<SubdivisionCodeMaster, String> getRepository() {
-        return this.subdivisionCodeMasterRepository;
+        return subdivisionCodeMasterRepository;
     }
 
     @Override
     protected SpecificationUtil<SubdivisionCodeMaster> getSpecificationUtil() {
-        return this.specificationUtil;
+        return specificationUtil;
     }
 
     public List<SubdivisionName> getNameListBySubdivisionCode(String[] subDivisionCodeArray) {
-        return this.subdivisionCodeMasterRepository.findAllNameBySubdivisionCodeIn(subDivisionCodeArray);
+        return subdivisionCodeMasterRepository.findAllNameBySubdivisionCodeIn(subDivisionCodeArray);
     }
 }

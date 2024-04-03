@@ -10,9 +10,10 @@ import eu.gaiax.wizard.api.exception.EntityNotFoundException;
 import eu.gaiax.wizard.api.model.RegistrationStatus;
 import eu.gaiax.wizard.api.model.setting.AWSSettings;
 import eu.gaiax.wizard.api.utils.StringPool;
+import eu.gaiax.wizard.api.utils.TenantContext;
 import eu.gaiax.wizard.core.service.job.ScheduleService;
-import eu.gaiax.wizard.dao.entity.participant.Participant;
-import eu.gaiax.wizard.dao.repository.participant.ParticipantRepository;
+import eu.gaiax.wizard.dao.tenant.entity.participant.Participant;
+import eu.gaiax.wizard.dao.tenant.repo.participant.ParticipantRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.quartz.SchedulerException;
@@ -50,8 +51,8 @@ public class DomainService {
         request.setChangeBatch(batch);
 
 
-        request.setHostedZoneId(this.awsSettings.hostedZoneId());
-        ChangeResourceRecordSetsResult result = this.amazonRoute53.changeResourceRecordSets(request);
+        request.setHostedZoneId(awsSettings.hostedZoneId());
+        ChangeResourceRecordSetsResult result = amazonRoute53.changeResourceRecordSets(request);
 
         if (action.equalsIgnoreCase(StringPool.CREATE)) {
             String status = result.getChangeInfo().getStatus();
@@ -68,7 +69,7 @@ public class DomainService {
                 }
                 GetChangeRequest getChangeRequest = new GetChangeRequest()
                         .withId(changeId);
-                ChangeInfo changeInfo = this.amazonRoute53.getChange(getChangeRequest).getChangeInfo();
+                ChangeInfo changeInfo = amazonRoute53.getChange(getChangeRequest).getChangeInfo();
                 status = changeInfo.getStatus();
                 log.info("DomainService(updateTxtRecords) -> Status {} and count {}", status, ++count);
             }
@@ -79,13 +80,13 @@ public class DomainService {
 
     public void createSubDomain(UUID participantId) {
         log.info("DomainService(createSubDomain) -> Initiate process for creating sub domain for participant {}.", participantId);
-        Participant participant = this.participantRepository.findById(participantId).orElseThrow(() -> new EntityNotFoundException("participant.not.found"));
+        Participant participant = participantRepository.findById(participantId).orElseThrow(() -> new EntityNotFoundException("participant.not.found"));
 
         try {
             String domainName = participant.getDomain();
             log.info("DomainService(createSubDomain) -> Prepare domain {} for participant {}.", domainName, participantId);
             ResourceRecord resourceRecord = new ResourceRecord();
-            resourceRecord.setValue(this.awsSettings.serverIp());
+            resourceRecord.setValue(awsSettings.serverIp());
 
             ResourceRecordSet recordsSet = new ResourceRecordSet();
             recordsSet.setResourceRecords(List.of(resourceRecord));
@@ -100,25 +101,26 @@ public class DomainService {
             ChangeResourceRecordSetsRequest request = new ChangeResourceRecordSetsRequest();
             request.setChangeBatch(batch);
 
-            request.setHostedZoneId(this.awsSettings.hostedZoneId());
-            ChangeResourceRecordSetsResult result = this.amazonRoute53.changeResourceRecordSets(request);
+            request.setHostedZoneId(awsSettings.hostedZoneId());
+            ChangeResourceRecordSetsResult result = amazonRoute53.changeResourceRecordSets(request);
             log.info("DomainService(createSubDomain) -> Subdomain {} is created for participant {} and AWS Route result is {}", domainName, participantId, result);
             participant.setStatus(RegistrationStatus.DOMAIN_CREATED.getStatus());
 
             //create job to create certificate
-            this.createCertificateCreationJob(participant);
+            createCertificateCreationJob(participant);
         } catch (Exception e) {
             log.error("DomainService(createSubDomain) -> Error occurred while creating the sub domain for participant {}", participant.getId(), e);
             participant.setStatus(RegistrationStatus.DOMAIN_CREATION_FAILED.getStatus());
         } finally {
-            this.participantRepository.save(participant);
+            participantRepository.save(participant);
             log.debug("DomainService(createSubDomain) -> Participant details has been updated.");
         }
     }
 
     private void createCertificateCreationJob(Participant participant) {
         try {
-            this.scheduleService.createJob(participant.getId().toString(), StringPool.JOB_TYPE_CREATE_CERTIFICATE, 0); //try for 3 time for certificate
+            String tenantAlias = TenantContext.getCurrentTenant();
+            scheduleService.createJob(participant.getId().toString(), StringPool.JOB_TYPE_CREATE_CERTIFICATE, 0, tenantAlias); //try for 3 time for certificate
             log.info("DomainService(createCertificateCreationJob) -> Process has been scheduled for participant {} with status {}", participant.getId(), StringPool.JOB_TYPE_CREATE_CERTIFICATE);
         } catch (SchedulerException e) {
             log.error("DomainService(createCertificateCreationJob) -> Process has been failed while schedule certificate creation job for participant {}", participant.getId(), e);

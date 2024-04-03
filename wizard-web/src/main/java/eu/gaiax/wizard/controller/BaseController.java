@@ -18,7 +18,7 @@ public abstract class BaseController {
     }
 
     public void validateParticipantId(String participantId, Principal principal) {
-        String participantIdFromPrincipal = (String) this.requestForClaim(StringPool.ID, principal);
+        String participantIdFromPrincipal = (String) requestForClaim(StringPool.ID, principal);
 
         if (!participantId.equalsIgnoreCase(participantIdFromPrincipal)) {
             throw new ForbiddenAccessException("access.not.allowed");

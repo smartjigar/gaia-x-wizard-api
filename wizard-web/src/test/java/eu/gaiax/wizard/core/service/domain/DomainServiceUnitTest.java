@@ -8,8 +8,8 @@ import com.amazonaws.services.route53.model.GetChangeResult;
 import eu.gaiax.wizard.api.model.setting.AWSSettings;
 import eu.gaiax.wizard.api.utils.StringPool;
 import eu.gaiax.wizard.core.service.job.ScheduleService;
-import eu.gaiax.wizard.dao.entity.participant.Participant;
-import eu.gaiax.wizard.dao.repository.participant.ParticipantRepository;
+import eu.gaiax.wizard.dao.tenant.entity.participant.Participant;
+import eu.gaiax.wizard.dao.tenant.repo.participant.ParticipantRepository;
 import eu.gaiax.wizard.util.constant.TestConstant;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -31,8 +31,8 @@ import static org.mockito.Mockito.*;
 class DomainServiceUnitTest {
 
 
+    private final String randomUUID = UUID.randomUUID().toString();
     private DomainService domainService;
-
     private AWSSettings awsSettings;
     @Mock
     private AmazonRoute53 amazonRoute53;
@@ -41,56 +41,54 @@ class DomainServiceUnitTest {
     @Mock
     private ScheduleService scheduleService;
 
-    private final String randomUUID = UUID.randomUUID().toString();
-
     @BeforeEach
     void setUp() {
-        this.awsSettings = new AWSSettings(null, null, null, null, this.randomUUID, "0.0.0.0", null, null);
-        this.domainService = spy(new DomainService(this.awsSettings, this.amazonRoute53, this.participantRepository, this.scheduleService));
+        awsSettings = new AWSSettings(null, null, null, null, randomUUID, "0.0.0.0", null, null);
+        domainService = spy(new DomainService(awsSettings, amazonRoute53, participantRepository, scheduleService));
     }
 
     @AfterEach
     void tearDown() {
-        this.domainService = null;
-        this.awsSettings = null;
+        domainService = null;
+        awsSettings = null;
     }
 
     @Test
     void testUpdateTxtRecordForSSLCertificate_delete() {
         ChangeResourceRecordSetsResult changeResourceRecordSetsResult = new ChangeResourceRecordSetsResult();
-        changeResourceRecordSetsResult.setChangeInfo(new ChangeInfo(this.randomUUID, ChangeStatus.INSYNC, new Date()));
-        doReturn(changeResourceRecordSetsResult).when(this.amazonRoute53).changeResourceRecordSets(any());
+        changeResourceRecordSetsResult.setChangeInfo(new ChangeInfo(randomUUID, ChangeStatus.INSYNC, new Date()));
+        doReturn(changeResourceRecordSetsResult).when(amazonRoute53).changeResourceRecordSets(any());
 
-        assertDoesNotThrow(() -> this.domainService.updateTxtRecords(this.randomUUID, this.randomUUID, StringPool.DELETE));
+        assertDoesNotThrow(() -> domainService.updateTxtRecords(randomUUID, randomUUID, StringPool.DELETE));
     }
 
     @Test
     void testUpdateTxtRecordForSSLCertificate_create() {
         ChangeResourceRecordSetsResult changeResourceRecordSetsResult = new ChangeResourceRecordSetsResult()
-                .withChangeInfo(new ChangeInfo(this.randomUUID, ChangeStatus.PENDING, new Date()));
-        doReturn(changeResourceRecordSetsResult).when(this.amazonRoute53).changeResourceRecordSets(any());
-        doReturn(new GetChangeResult().withChangeInfo(new ChangeInfo(this.randomUUID, ChangeStatus.INSYNC, new Date()))).when(this.amazonRoute53).getChange(any());
+                .withChangeInfo(new ChangeInfo(randomUUID, ChangeStatus.PENDING, new Date()));
+        doReturn(changeResourceRecordSetsResult).when(amazonRoute53).changeResourceRecordSets(any());
+        doReturn(new GetChangeResult().withChangeInfo(new ChangeInfo(randomUUID, ChangeStatus.INSYNC, new Date()))).when(amazonRoute53).getChange(any());
 
-        assertDoesNotThrow(() -> this.domainService.updateTxtRecords(this.randomUUID, this.randomUUID, StringPool.CREATE));
+        assertDoesNotThrow(() -> domainService.updateTxtRecords(randomUUID, randomUUID, StringPool.CREATE));
     }
 
     @Test
     void testCreateSubDomain() throws SchedulerException {
-        Participant participant = this.generateMockParticipant();
-        doReturn(Optional.of(participant)).when(this.participantRepository).findById(UUID.fromString(this.randomUUID));
-        doReturn(participant).when(this.participantRepository).save(any());
+        Participant participant = generateMockParticipant();
+        doReturn(Optional.of(participant)).when(participantRepository).findById(UUID.fromString(randomUUID));
+        doReturn(participant).when(participantRepository).save(any());
 
         ChangeResourceRecordSetsResult changeResourceRecordSetsResult = new ChangeResourceRecordSetsResult()
-                .withChangeInfo(new ChangeInfo(this.randomUUID, ChangeStatus.PENDING, new Date()));
-        doReturn(changeResourceRecordSetsResult).when(this.amazonRoute53).changeResourceRecordSets(any());
-        doNothing().when(this.scheduleService).createJob(anyString(), anyString(), anyInt());
+                .withChangeInfo(new ChangeInfo(randomUUID, ChangeStatus.PENDING, new Date()));
+        doReturn(changeResourceRecordSetsResult).when(amazonRoute53).changeResourceRecordSets(any());
+        doNothing().when(scheduleService).createJob(anyString(), anyString(), anyInt(), anyString());
 
-        assertDoesNotThrow(() -> this.domainService.createSubDomain(UUID.fromString(this.randomUUID)));
+        assertDoesNotThrow(() -> domainService.createSubDomain(UUID.fromString(randomUUID)));
     }
 
     private Participant generateMockParticipant() {
         Participant participant = new Participant();
-        participant.setId(UUID.fromString(this.randomUUID));
+        participant.setId(UUID.fromString(randomUUID));
         participant.setDomain(TestConstant.SHORT_NAME);
         return participant;
     }

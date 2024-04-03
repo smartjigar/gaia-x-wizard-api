@@ -8,9 +8,10 @@ import eu.gaiax.wizard.api.exception.EntityNotFoundException;
 import eu.gaiax.wizard.api.model.RegistrationStatus;
 import eu.gaiax.wizard.api.model.setting.K8SSettings;
 import eu.gaiax.wizard.api.utils.StringPool;
+import eu.gaiax.wizard.api.utils.TenantContext;
 import eu.gaiax.wizard.core.service.job.ScheduleService;
-import eu.gaiax.wizard.dao.entity.participant.Participant;
-import eu.gaiax.wizard.dao.repository.participant.ParticipantRepository;
+import eu.gaiax.wizard.dao.tenant.entity.participant.Participant;
+import eu.gaiax.wizard.dao.tenant.repo.participant.ParticipantRepository;
 import eu.gaiax.wizard.vault.Vault;
 import io.kubernetes.client.openapi.ApiClient;
 import io.kubernetes.client.openapi.ApiException;
@@ -45,13 +46,13 @@ public class K8SService {
 
     public void createIngress(UUID participantId) {
         log.info("K8sService(createIngress) -> Initiate the ingress creation process for participant {}", participantId);
-        Participant participant = this.participantRepository.findById(participantId).orElseThrow(() -> new EntityNotFoundException("participant.not.found"));
+        Participant participant = participantRepository.findById(participantId).orElseThrow(() -> new EntityNotFoundException("participant.not.found"));
 
         try {
-            Map<String, Object> certificates = this.vault.get(participant.getId().toString());
+            Map<String, Object> certificates = vault.get(participant.getId().toString());
             //Step 1: create secret using SSL certificate
             log.info("K8sService(createIngress) -> Create secret using ssl certificates.");
-            ApiClient client = Config.fromToken(this.k8SSettings.basePath(), this.k8SSettings.token(), false);
+            ApiClient client = Config.fromToken(k8SSettings.basePath(), k8SSettings.token(), false);
             Configuration.setDefaultApiClient(client);
 
             CoreV1Api api = new CoreV1Api();
@@ -76,7 +77,7 @@ public class K8SService {
             annotations.put("nginx.ingress.kubernetes.io/proxy-connect-timeout", "600");
             annotations.put("nginx.ingress.kubernetes.io/proxy-send-timeout", "600");
             annotations.put("nginx.ingress.kubernetes.io/proxy-read-timeout", "600");
-            annotations.put("cert-manager.io/cluster-issuer", this.k8SSettings.issuer());
+            annotations.put("cert-manager.io/cluster-issuer", k8SSettings.issuer());
 
             //Step 2: Create ingress
             NetworkingV1Api networkingV1Api = new NetworkingV1Api();
@@ -92,7 +93,7 @@ public class K8SService {
 
             //service backend
             V1IngressServiceBackend backend = new V1IngressServiceBackend();
-            backend.setName(this.k8SSettings.serviceName());
+            backend.setName(k8SSettings.serviceName());
             V1ServiceBackendPort port = new V1ServiceBackendPort();
             port.setNumber(8080);
             backend.setPort(port);
@@ -129,19 +130,20 @@ public class K8SService {
             participant.setStatus(RegistrationStatus.INGRESS_CREATED.getStatus());
 
             log.debug("K8sService(createIngress) -> Ingress has been created for participant -> {} and domain ->{}", participant.getId(), participant.getDomain());
-            this.createDidCreationJob(participant);
+            createDidCreationJob(participant);
         } catch (Exception e) {
             log.error("K8sService(createIngress) -> Not able to create ingress for participant {}, with exception: {}", participant.getId(), ((ApiException) e).getResponseBody(), e);
             participant.setStatus(RegistrationStatus.INGRESS_CREATION_FAILED.getStatus());
         } finally {
-            this.participantRepository.save(participant);
+            participantRepository.save(participant);
             log.info("K8sService(createIngress) -> Participant details has been updated.");
         }
     }
 
     private void createDidCreationJob(Participant participant) {
         try {
-            this.scheduleService.createJob(participant.getId().toString(), StringPool.JOB_TYPE_CREATE_DID, 0);
+            String tenantAlias = TenantContext.getCurrentTenant();
+            scheduleService.createJob(participant.getId().toString(), StringPool.JOB_TYPE_CREATE_DID, 0, tenantAlias);
             log.info("K8sService(createDidCreationJob) -> DID creation corn has been scheduled.");
         } catch (SchedulerException e) {
             log.info("K8sService(createDidCreationJob) -> DID creation failed for participant {}", participant.getId());

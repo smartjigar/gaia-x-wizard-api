@@ -3,8 +3,8 @@ package eu.gaiax.wizard.core.service.data_master;
 import com.smartsensesolutions.java.commons.base.repository.BaseRepository;
 import com.smartsensesolutions.java.commons.base.service.BaseService;
 import com.smartsensesolutions.java.commons.specification.SpecificationUtil;
-import eu.gaiax.wizard.dao.entity.data_master.RequestTypeMaster;
-import eu.gaiax.wizard.dao.repository.data_master.RequestTypeMasterRepository;
+import eu.gaiax.wizard.dao.master.entity.RequestTypeMaster;
+import eu.gaiax.wizard.dao.master.repo.RequestTypeMasterRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -18,11 +18,11 @@ public class RequestTypeMasterService extends BaseService<RequestTypeMaster, Str
 
     @Override
     protected BaseRepository<RequestTypeMaster, String> getRepository() {
-        return this.registrationTypeMasterRepository;
+        return registrationTypeMasterRepository;
     }
 
     @Override
     protected SpecificationUtil<RequestTypeMaster> getSpecificationUtil() {
-        return this.specificationUtil;
+        return specificationUtil;
     }
 }

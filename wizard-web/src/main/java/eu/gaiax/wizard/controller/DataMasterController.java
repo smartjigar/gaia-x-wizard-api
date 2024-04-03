@@ -144,7 +144,7 @@ public class DataMasterController extends BaseController {
     public CommonResponse<PageResponse> filterTypeMaster(
             @PathVariable(name = "dataType") @Parameter(description = "[access, entity, format, registration, request, standard, subdivision, spdxLicense]") String dataType,
             @Valid @RequestBody FilterRequest filterRequest) {
-        BaseService service = this.masterDataServiceFactory.getInstance(dataType);
+        BaseService service = masterDataServiceFactory.getInstance(dataType);
         Page page = service.filter(filterRequest);
         return CommonResponse.of(PageResponse.of(page, filterRequest.getSort()));
     }
@@ -189,6 +189,6 @@ public class DataMasterController extends BaseController {
     )
     @GetMapping(LABEL_LEVEL_QUESTIONS)
     public CommonResponse<List<LabelLevelTypeInterface>> getLabelLevelQuestions() {
-        return CommonResponse.of(this.labelLevelService.getLabelLevelTypeAndQuestionList());
+        return CommonResponse.of(labelLevelService.getLabelLevelTypeAndQuestionList());
     }
 }

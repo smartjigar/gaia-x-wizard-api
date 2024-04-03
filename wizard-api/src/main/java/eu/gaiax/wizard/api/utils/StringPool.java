@@ -46,6 +46,7 @@ public class StringPool {
      * The constant JOB_TYPE.
      */
     public static final String JOB_TYPE = "JOB_TYPE";
+    public static final String JOB_TENANT_ALIAS = "JOB_TENANT_ALIAS";
 
     /**
      * The constant VERIFIABLE_CREDENTIAL.
@@ -197,6 +198,8 @@ public class StringPool {
     public static final String CREATE = "CREATE";
 
     public static final String DELETE = "DELETE";
+    public static final String TENANT = "tenant";
+
 
     private StringPool() {
     }
