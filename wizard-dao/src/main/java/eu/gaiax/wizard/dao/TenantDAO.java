@@ -100,8 +100,8 @@ public class TenantDAO {
                     .addArgumentValue("changelogFile", tenantLiquibaseConfig)
                     //.addArgumentValue(DbUrlConnectionCommandStep.DATABASE_ARG, database)
                     .addArgumentValue(DbUrlConnectionCommandStep.URL_ARG, jdbcUrl(tenantAlias))
-                    .addArgumentValue(DbUrlConnectionCommandStep.PASSWORD_ARG, dbUsername)
-                    .addArgumentValue(DbUrlConnectionCommandStep.USERNAME_ARG, dbPassword)
+                    .addArgumentValue(DbUrlConnectionCommandStep.PASSWORD_ARG, dbPassword)
+                    .addArgumentValue(DbUrlConnectionCommandStep.USERNAME_ARG, dbUsername)
                     .execute();
         } catch (LiquibaseException | SQLException e) {
             log.error(e.getMessage(), e);
