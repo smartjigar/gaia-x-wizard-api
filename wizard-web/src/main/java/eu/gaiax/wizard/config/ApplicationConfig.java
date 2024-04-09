@@ -214,7 +214,7 @@ public class ApplicationConfig implements WebMvcConfigurer {
     @Bean
     CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(Arrays.asList("http://localhost:4000/", "https://wizard-1.dev.smart-x.smartsenselabs.com/"));   //changes as per your port and host name
+        configuration.setAllowedOrigins(Arrays.asList("http://localhost:4000/"));   //changes as per your port and host name
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "OPTIONS", "PUT", "DELETE"));
         configuration.setAllowedHeaders(
                 List.of("X-Requested-With", "X-HTTP-Method-Override", "Content-Type", "Authorization", "Accept",
