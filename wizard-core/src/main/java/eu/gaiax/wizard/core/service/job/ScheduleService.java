@@ -6,6 +6,7 @@ package eu.gaiax.wizard.core.service.job;
 
 
 import eu.gaiax.wizard.api.utils.StringPool;
+import eu.gaiax.wizard.api.utils.TenantContext;
 import lombok.RequiredArgsConstructor;
 import org.quartz.*;
 import org.slf4j.Logger;
@@ -48,6 +49,7 @@ public class ScheduleService {
      * @throws SchedulerException the scheduler exception
      */
     public void createJob(String id, String type, int count, String tenantAlias) throws SchedulerException {
+        TenantContext.setUseMasterDb(true);
         JobDetail job = JobBuilder.newJob(ScheduledJobBean.class)
                 .withIdentity(UUID.randomUUID().toString(), type)
                 .storeDurably()
@@ -65,5 +67,6 @@ public class ScheduleService {
                 .build();
         scheduler.scheduleJob(job, activateEnterpriseUserTrigger);
         LOGGER.debug("{}: job created for participant with id->{}", type, id);
+        TenantContext.setUseMasterDb(false);
     }
 }

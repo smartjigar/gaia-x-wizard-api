@@ -30,14 +30,15 @@ public class TenantFilter implements Filter {
     @Override
     public void doFilter(ServletRequest servletRequest, ServletResponse servletResponse, FilterChain filterChain) throws IOException, ServletException {
         HttpServletRequest req = (HttpServletRequest) servletRequest;
-        String tenantName = WizardRestConstant.MASTER_DB_KEY;
+        String tenantName = null;
         String token = req.getHeader("Authorization");
         String headerTenant = req.getHeader(WizardRestConstant.TENANT_HEADER_KEY);
         if (token != null) {
             Jwt credentials = (Jwt) SecurityContextHolder.getContext().getAuthentication().getCredentials();
             Map<String, Object> claims = credentials.getClaims();
             tenantName = (String) claims.get("tenant");
-        } else if (headerTenant != null) {
+        }
+        if (tenantName == null && headerTenant != null) {
             tenantName = headerTenant;
         }
         if (!dataSourceMap.containsKey(tenantName)) {

@@ -63,6 +63,7 @@ public class KeycloakService {
         userRepresentation.setEnabled(true);
         userRepresentation.setEmail(email);
         userRepresentation.setFirstName(legalName);
+        userRepresentation.setUsername(email);
 
         Map<String, List<String>> userAttributes = new HashMap<>();
         userAttributes.put(StringPool.ID, Collections.singletonList(id));

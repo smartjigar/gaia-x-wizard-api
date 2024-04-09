@@ -219,7 +219,9 @@ public class SignerService {
         }
 
         if (!fetchX509Certificate(participant.getDomain())) {
+            TenantContext.setUseMasterDb(true);
             createDidCreationJob(participant);
+            TenantContext.setUseMasterDb(false);
             return;
         }
 
@@ -237,7 +239,9 @@ public class SignerService {
             participant.setStatus(RegistrationStatus.DID_JSON_CREATED.getStatus());
             participant.setDid("did:web:" + domain);
             log.info("SignerService(createDid) -> DID Document has been created for participant {} with did {}", participant.getId(), participant.getDid());
+            TenantContext.setUseMasterDb(true);
             createParticipantCreationJob(participant);
+            TenantContext.setUseMasterDb(false);
         } catch (Exception e) {
             log.error("SignerService(createDid) -> Error while creating did json for participantID -{}", participant.getId(), e);
             participant.setStatus(RegistrationStatus.DID_JSON_CREATION_FAILED.getStatus());

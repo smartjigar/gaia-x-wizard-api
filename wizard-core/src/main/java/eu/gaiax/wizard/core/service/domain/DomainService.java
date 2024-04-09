@@ -106,6 +106,7 @@ public class DomainService {
             log.info("DomainService(createSubDomain) -> Subdomain {} is created for participant {} and AWS Route result is {}", domainName, participantId, result);
             participant.setStatus(RegistrationStatus.DOMAIN_CREATED.getStatus());
 
+            TenantContext.setUseMasterDb(true);
             //create job to create certificate
             createCertificateCreationJob(participant);
         } catch (Exception e) {

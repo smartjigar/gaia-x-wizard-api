@@ -190,7 +190,9 @@ public class CertificateService {
 
             String tenantAlias = TenantContext.getCurrentTenant();
             //create Job tp create ingress and tls secret
+            TenantContext.setUseMasterDb(true);
             scheduleService.createJob(participant.getId().toString(), StringPool.JOB_TYPE_CREATE_INGRESS, 0, tenantAlias);
+            TenantContext.setUseMasterDb(false);
             log.info("CertificateService(createSSLCertificate) -> Ingress creation corn job has been scheduled.");
             if (jobKey != null) {
                 //delete job

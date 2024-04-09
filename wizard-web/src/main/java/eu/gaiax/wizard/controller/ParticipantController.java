@@ -615,7 +615,8 @@ public class ParticipantController extends BaseController {
             )
     })
     @GetMapping(path = PARTICIPANT_SUBDOMAIN, produces = APPLICATION_JSON_VALUE)
-    public CommonResponse<Map<String, String>> createSubDomain(@PathVariable(name = "participantId") String participantId) {
+    public CommonResponse<Map<String, String>> createSubDomain(@RequestHeader(value = WizardRestConstant.TENANT_HEADER_KEY) String tenantId,
+            @PathVariable(name = "participantId") String participantId) {
         domainService.createSubDomain(UUID.fromString(participantId));
         return CommonResponse.of(Map.of(RESPONSE_MESSAGE, "Subdomain creation started"));
     }
@@ -670,7 +671,8 @@ public class ParticipantController extends BaseController {
             )
     })
     @GetMapping(path = PARTICIPANT_CERTIFICATE, produces = APPLICATION_JSON_VALUE)
-    public CommonResponse<Participant> createCertificate(@PathVariable(name = "participantId") String participantId) {
+    public CommonResponse<Participant> createCertificate(@RequestHeader(value = WizardRestConstant.TENANT_HEADER_KEY) String tenantId,
+            @PathVariable(name = "participantId") String participantId) {
         Participant participant = participantService.get(UUID.fromString(participantId));
         Validate.isTrue(participant.getStatus() != RegistrationStatus.CERTIFICATE_CREATION_FAILED.getStatus()).launch("Status is not certification creation failed");
         participant = participantService.changeStatus(UUID.fromString(participantId), RegistrationStatus.CERTIFICATE_CREATION_IN_PROCESS.getStatus());
@@ -714,7 +716,8 @@ public class ParticipantController extends BaseController {
             )
     })
     @GetMapping(path = PARTICIPANT_INGRESS, produces = APPLICATION_JSON_VALUE)
-    public CommonResponse<Map<String, String>> createIngress(@PathVariable(name = "participantId") String participantId) {
+    public CommonResponse<Map<String, String>> createIngress(@RequestHeader(value = WizardRestConstant.TENANT_HEADER_KEY) String tenantId,
+            @PathVariable(name = "participantId") String participantId) {
         k8SService.createIngress(UUID.fromString(participantId));
         return CommonResponse.of(Map.of(RESPONSE_MESSAGE, "Ingress creation started"));
     }
@@ -754,7 +757,8 @@ public class ParticipantController extends BaseController {
             )
     })
     @GetMapping(path = PARTICIPANT_DID, produces = APPLICATION_JSON_VALUE)
-    public CommonResponse<Map<String, String>> createDid(@PathVariable(name = "participantId") String participantId) {
+    public CommonResponse<Map<String, String>> createDid(@RequestHeader(value = WizardRestConstant.TENANT_HEADER_KEY) String tenantId,
+            @PathVariable(name = "participantId") String participantId) {
         signerService.createDid(UUID.fromString(participantId));
         return CommonResponse.of(Map.of(RESPONSE_MESSAGE, "did creation started"));
     }
@@ -794,7 +798,8 @@ public class ParticipantController extends BaseController {
             )
     })
     @GetMapping(path = CREATE_PARTICIPANT, produces = APPLICATION_JSON_VALUE)
-    public CommonResponse<Map<String, String>> createParticipantJson(@PathVariable(name = "participantId") String participantId) {
+    public CommonResponse<Map<String, String>> createParticipantJson(@RequestHeader(value = WizardRestConstant.TENANT_HEADER_KEY) String tenantId,
+            @PathVariable(name = "participantId") String participantId) {
         signerService.createSignedLegalParticipant(UUID.fromString(participantId));
         return CommonResponse.of(Map.of(RESPONSE_MESSAGE, "participant json creation started"));
     }
@@ -866,7 +871,8 @@ public class ParticipantController extends BaseController {
             description = "This endpoint returns logged in participant's profile."
     )
     @GetMapping(PARTICIPANT_PROFILE)
-    public CommonResponse<ParticipantProfileDto> getParticipantProfile(@PathVariable(StringPool.PARTICIPANT_ID) String participantId) {
+    public CommonResponse<ParticipantProfileDto> getParticipantProfile(@RequestHeader(value = WizardRestConstant.TENANT_HEADER_KEY) String tenantId,
+            @PathVariable(StringPool.PARTICIPANT_ID) String participantId) {
         return CommonResponse.of(participantService.getParticipantProfile(participantId));
     }
 
@@ -875,7 +881,8 @@ public class ParticipantController extends BaseController {
             description = "This endpoint updates participant's profile image."
     )
     @PutMapping(value = PARTICIPANT_PROFILE_IMAGE, consumes = MULTIPART_FORM_DATA_VALUE)
-    public CommonResponse<Map<String, Object>> updateParticipantProfileImage(@PathVariable(StringPool.PARTICIPANT_ID) String participantId,
+    public CommonResponse<Map<String, Object>> updateParticipantProfileImage(@RequestHeader(value = WizardRestConstant.TENANT_HEADER_KEY) String tenantId,
+            @PathVariable(StringPool.PARTICIPANT_ID) String participantId,
             @Valid @ModelAttribute FileUploadRequest fileUploadRequest) {
         return CommonResponse.of("imageUrl", participantService.updateParticipantProfileImage(participantId, fileUploadRequest.file()), messageSource.getMessage("profile.image.updated", null, LocaleContextHolder.getLocale()));
     }

@@ -258,7 +258,7 @@ class ParticipantControllerTest {
         update_participant_profile_image_200();
         Participant participant = participantRepository.findAll().get(0);
 
-        CommonResponse<ParticipantProfileDto> participantConfigResponse = participantController.getParticipantProfile(participant.getId().toString());
+        CommonResponse<ParticipantProfileDto> participantConfigResponse = participantController.getParticipantProfile(anyString(), participant.getId().toString());
         assertThat(participantConfigResponse.getPayload().getId()).isEqualTo(participant.getId().toString());
         assertThat(participantConfigResponse.getPayload().getLegalName()).isEqualTo(participant.getLegalName());
         assertThat(participantConfigResponse.getPayload().getEmail()).isEqualTo(participant.getEmail());
@@ -277,7 +277,7 @@ class ParticipantControllerTest {
         try (MockedStatic<FileUtils> fileUtilsMockedStatic = Mockito.mockStatic(FileUtils.class)) {
             fileUtilsMockedStatic.when(() -> FileUtils.copyToFile(any(), any()))
                     .thenThrow(new IOException());
-            assertThrows(BadDataException.class, () -> participantController.updateParticipantProfileImage(participantId, updateProfileImageRequest));
+            assertThrows(BadDataException.class, () -> participantController.updateParticipantProfileImage(anyString(), participantId, updateProfileImageRequest));
         }
     }
 
@@ -286,7 +286,7 @@ class ParticipantControllerTest {
         initiate_onboarding_participant_own_did_200();
         Participant participant = participantRepository.findAll().get(0);
 
-        CommonResponse<Map<String, Object>> participantImageUploadResponse = participantController.updateParticipantProfileImage(participant.getId().toString(), HelperService.getValidUpdateProfileImageRequest());
+        CommonResponse<Map<String, Object>> participantImageUploadResponse = participantController.updateParticipantProfileImage(anyString(), participant.getId().toString(), HelperService.getValidUpdateProfileImageRequest());
         assertThat(participantImageUploadResponse.getPayload().get("imageUrl")).isNotNull();
     }
 
@@ -294,10 +294,10 @@ class ParticipantControllerTest {
     void update_participant_profile_image_existing_image_200() {
         initiate_onboarding_participant_own_did_200();
         Participant participant = participantRepository.findAll().get(0);
-        participantController.updateParticipantProfileImage(participant.getId().toString(), HelperService.getValidUpdateProfileImageRequest());
+        participantController.updateParticipantProfileImage(anyString(), participant.getId().toString(), HelperService.getValidUpdateProfileImageRequest());
 
 //       Update picture with deleting existing picture
-        CommonResponse<Map<String, Object>> participantImageUploadResponse = participantController.updateParticipantProfileImage(participant.getId().toString(), HelperService.getValidUpdateProfileImageRequest());
+        CommonResponse<Map<String, Object>> participantImageUploadResponse = participantController.updateParticipantProfileImage(anyString(), participant.getId().toString(), HelperService.getValidUpdateProfileImageRequest());
         assertThat(participantImageUploadResponse.getPayload().get("imageUrl")).isNotNull();
     }
 
