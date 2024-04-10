@@ -17,7 +17,6 @@ import eu.gaiax.wizard.api.model.request.ParticipantValidatorRequest;
 import eu.gaiax.wizard.api.model.service_offer.CredentialDto;
 import eu.gaiax.wizard.api.utils.CommonUtils;
 import eu.gaiax.wizard.api.utils.S3Utils;
-import eu.gaiax.wizard.api.utils.TenantContext;
 import eu.gaiax.wizard.api.utils.Validate;
 import eu.gaiax.wizard.core.service.InvokeService;
 import eu.gaiax.wizard.core.service.credential.CredentialService;
@@ -267,10 +266,9 @@ public class ParticipantService extends BaseService<Participant, UUID> {
     }
 
     public String getLegalParticipantOrDidJson(String participantId, String filename) throws IOException {
-        TenantContext.setCurrentTenant("demo"); //TODO need to remove
         String fetchedFileName = UUID.randomUUID().toString() + "." + FilenameUtils.getExtension(filename);
         File file = new File(fetchedFileName);
-        findParticipantById(UUID.fromString(participantId));
+        //findParticipantById(UUID.fromString(participantId)); TODO need to uncomment it.
 
         try {
             log.info("ParticipantService(getParticipantFile) -> Fetch files from s3 bucket with Id {} and filename {}", participantId, filename);
