@@ -340,7 +340,7 @@ public class ServiceOfferService extends BaseService<ServiceOffer, UUID> {
         }
         JsonNode jsonNode = objectMapper.readTree(objectMapper.writeValueAsString(request.getCredentialSubject()));
 
-        JsonNode aggregationOfArray = jsonNode.at("/gx:aggregationOf");
+        JsonNode aggregationOfArray = jsonNode.at("/gx:aggregationOfExists");
 
         List<String> ids = new ArrayList<>();
         aggregationOfArray.forEach(item -> {

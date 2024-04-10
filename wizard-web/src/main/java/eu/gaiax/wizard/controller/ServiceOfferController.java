@@ -61,7 +61,7 @@ public class ServiceOfferController extends BaseController {
                                   "gx:accessType": "physical",
                                   "gx:formatType": "pdf"
                                 },
-                                "gx:aggregationOf": [
+                                "gx:aggregationOfExists": [
                                   {
                                     "id": "https://exmaple.com/12081064-8878-477e-8092-564a240c69e2/resource_9a40cafd-43ed-41b0-a53e-4e2af164fde5.json"
                                   }
@@ -770,7 +770,7 @@ public class ServiceOfferController extends BaseController {
                                                                       "gx:accessType": "physical",
                                                                       "gx:formatType": "pdf"
                                                                     },
-                                                                    "gx:aggregationOf": [
+                                                                    "gx:aggregationOfExists": [
                                                                       {
                                                                         "id": "https://example.com/125/resource_9a40cafd-43ed-41b0-a53e-4e2af164fde5.json"
                                                                       }
@@ -823,7 +823,7 @@ public class ServiceOfferController extends BaseController {
                                                                       "gx:accessType": "physical",
                                                                       "gx:formatType": "pdf"
                                                                     },
-                                                                    "gx:aggregationOf": [
+                                                                    "gx:aggregationOfExists": [
                                                                       {
                                                                         "id": "https://example.com/125/resource_86e8a7a9-c341-4049-abc7-dcf20e1736fe.json"
                                                                       }
@@ -959,7 +959,7 @@ public class ServiceOfferController extends BaseController {
                                   "gx:accessType": "physical",
                                   "gx:formatType": "pdf"
                                 },
-                                "gx:aggregationOf": [
+                                "gx:aggregationOfExists": [
                                   {
                                     "id": "https://exmaple.com/12081064-8878-477e-8092-564a240c69e2/resource_9a40cafd-43ed-41b0-a53e-4e2af164fde5.json"
                                   }
@@ -1040,7 +1040,7 @@ public class ServiceOfferController extends BaseController {
                                      "gx:accessType": "physical",
                                      "gx:formatType": "pdf"
                                    },
-                                   "gx:aggregationOf": [
+                                   "gx:aggregationOfExists": [
                                      {
                                        "id": "https://exmaple.com/12081064-8878-477e-8092-564a240c69e2/resource_9a40cafd-43ed-41b0-a53e-4e2af164fde5.json"
                                      }
@@ -1750,7 +1750,7 @@ public class ServiceOfferController extends BaseController {
                                                                       "gx:accessType": "physical",
                                                                       "gx:formatType": "pdf"
                                                                     },
-                                                                    "gx:aggregationOf": [
+                                                                    "gx:aggregationOfExists": [
                                                                       {
                                                                         "id": "https://example.com/125/resource_9a40cafd-43ed-41b0-a53e-4e2af164fde5.json"
                                                                       }
@@ -1803,7 +1803,7 @@ public class ServiceOfferController extends BaseController {
                                                                       "gx:accessType": "physical",
                                                                       "gx:formatType": "pdf"
                                                                     },
-                                                                    "gx:aggregationOf": [
+                                                                    "gx:aggregationOfExists": [
                                                                       {
                                                                         "id": "https://example.com/125/resource_86e8a7a9-c341-4049-abc7-dcf20e1736fe.json"
                                                                       }

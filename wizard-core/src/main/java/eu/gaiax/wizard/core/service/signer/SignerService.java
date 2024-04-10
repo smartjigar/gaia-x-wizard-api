@@ -123,13 +123,14 @@ public class SignerService {
         //Add @context in the credential
         legalParticipant.put(CONTEXT, contextConfig.participant());
         legalParticipant.put(TYPE, List.of(VERIFIABLE_CREDENTIAL));
-        legalParticipant.put(ID, participant.getDid());
+        String participantJsonUrl = formParticipantJsonUrl(participant.getDomain(), participant.getId());
+        legalParticipant.put(ID, participantJsonUrl + "#0");
         legalParticipant.put(ISSUER, participant.getDid());
         String issuanceDate = LocalDateTime.now().atZone(ZoneOffset.UTC).format(DateTimeFormatter.ISO_OFFSET_DATE_TIME);
         legalParticipant.put(ISSUANCE_DATE, issuanceDate);
 
+
         Map<String, Object> participantCredentialSubject = mapper.convertValue(legalParticipant.get(CREDENTIAL_SUBJECT), typeReference);
-        String participantJsonUrl = formParticipantJsonUrl(participant.getDomain(), participant.getId());
         participantCredentialSubject.put(ID, participantJsonUrl + "#0");
         participantCredentialSubject.put(TYPE, GX_LEGAL_PARTICIPANT);
         String registrationId = participantJsonUrl + "#1";
@@ -144,7 +145,7 @@ public class SignerService {
         Map<String, Object> tncVc = new TreeMap<>();
         tncVc.put(CONTEXT, contextConfig.tnc());
         tncVc.put(TYPE, List.of(VERIFIABLE_CREDENTIAL));
-        tncVc.put(ID, participant.getDid());
+        tncVc.put(ID, participantJsonUrl + "#2");
         tncVc.put(ISSUER, participant.getDid());
         tncVc.put(ISSUANCE_DATE, issuanceDate);
 
@@ -168,6 +169,13 @@ public class SignerService {
             return "https://" + domain + "/" + participantId.toString() + "/" + PARTICIPANT_JSON;
         }
         return wizardHost + participantId.toString() + "/" + PARTICIPANT_JSON;
+    }
+
+    private String formServiceOfferingJsonUrl(String domain, UUID participantId, String name) {
+        if (StringUtils.hasText(domain)) {
+            return "https://" + domain + "/" + participantId.toString() + "/" + name + JSON_EXTENSION;
+        }
+        return wizardHost + participantId.toString() + "/" + name + JSON_EXTENSION;
     }
 
     public void createSignedLegalParticipant(Participant participant, String issuer, String verificationMethod, String key, boolean ownDid) {
@@ -276,7 +284,7 @@ public class SignerService {
 
     public Map<String, String> signService(Participant participant, CreateServiceOfferingRequest request, String name) {
         Map<String, String> response = new HashMap<>();
-        String id = wizardHost + participant.getId() + "/" + name + JSON_EXTENSION;
+        String id = formServiceOfferingJsonUrl(participant.getDomain(), participant.getId(), name);
         Map<String, Object> providedBy = new HashMap<>();
         providedBy.put(ID, request.getParticipantJsonUrl());
         request.getCredentialSubject().put("gx:providedBy", providedBy);
@@ -290,7 +298,7 @@ public class SignerService {
                 .serviceOffering(VerifiableCredential.ServiceOffering.builder()
                         .context(contextConfig.serviceOffer())
                         .type(StringPool.VERIFIABLE_CREDENTIAL)
-                        .id(participant.getDid())
+                        .id(id)
                         .issuer(participant.getDid())
                         .issuanceDate(issuanceDate)
                         .credentialSubject(request.getCredentialSubject())
