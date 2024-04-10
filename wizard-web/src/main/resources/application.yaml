@@ -175,6 +175,7 @@ spring:
           batch_versioned_data: true
         order_inserts: true
         order_updates: true
+        enable_lazy_load_no_trans: true
     open-in-view: false
   servlet:
     multipart:
